@@ -1,0 +1,58 @@
+# tixforge template: tixforge-pr-link (v2). Installed by /tixforge:project init.
+# A server-side check that a pull request from a tixforge branch closes its
+# ticket's issue. The local guard hook can be bypassed; this cannot, once
+# the check is required in branch protection.
+#   branch GT-<number>-<slug>  ->  body must contain Closes / Fixes / Resolves #<number>
+# GT-000123 is issue #123. Other branches (LT- tickets, anything else) pass.
+# The error is in the document language, from .github/tixforge/messages.yml
+# (a copy of the plugin's), and says how to fix it: add the line and save.
+name: tixforge-pr-link
+
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  link:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/tixforge/messages.yml
+            .tixforge/config.yml
+          sparse-checkout-cone-mode: false
+      - name: Check Closes #<ticket>
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          case "$HEAD_REF" in
+            GT-[0-9]*-*) ;;
+            *) echo "$HEAD_REF is not the branch of a GitHub ticket"; exit 0 ;;
+          esac
+          d=${HEAD_REF#GT-}; d=${d%%-*}
+          n=$(printf '%s' "$d" | sed 's/^0*//')
+          if printf '%s\n' "$BODY" | grep -Eiq "(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]+#${n}([^0-9]|$)"; then
+            echo "closes #$n"
+          else
+            # msg <key>: a line of messages.yml in the document language (en fallback).
+            msg() {
+              lang=$(awk '/^language:/ { v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t]+#.*$/, "", v); gsub(/["\047\r]/, "", v); print v; exit }' .tixforge/config.yml 2>/dev/null)
+              for l in "${lang:-ja}" en; do
+                v=$(awk -v l="$l" -v k="$1" '
+                  /^[^ \t#]/ { cur = $0; sub(/:.*/, "", cur); next }
+                  cur == l && $0 ~ "^[ \t]+" k ":" { v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/^"/, "", v); sub(/"[ \t\r]*$/, "", v); gsub(/\\"/, "\"", v); print v; exit }
+                ' .github/tixforge/messages.yml 2>/dev/null)
+                [ -n "$v" ] && { printf '%s\n' "$v"; return; }
+              done
+            }
+            text=$(msg pr_link_missing_closes)
+            [ -n "$text" ] || text="PR 本文に「Closes #{n}」がありません（ブランチ {branch}）。本文に 1 行足して保存すると、この検査がやり直されて通ります。"
+            text=$(printf '%s' "$text" | sed -e "s/{n}/$n/g" -e "s|{branch}|$HEAD_REF|g")
+            echo "::error::$text"
+            exit 1
+          fi

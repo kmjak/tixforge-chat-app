@@ -1,0 +1,42 @@
+# tixforge template: tixforge-ticket issue form (v1). Installed by
+# /tixforge:project init when chosen. An issue opened with this form has the
+# sections of a tixforge ticket, so /tixforge:ticket create #<number> can
+# adopt it without rewriting it (### headings become the ticket's ##).
+# The labels, headings and descriptions are translated to the document
+# language when it is not Japanese; the headings must stay as the ticket's.
+name: tixforge チケット
+description: tixforge で開発するチケット。/tixforge:ticket create #<番号> で取り込んでから /tixforge:dev で進める。
+labels: ["tixforge:todo"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜ必要か。解決したい問題や動機、誰が影響を受けるか。
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 要件
+      description: 何をするか。1 項目 1 行の箇条書きで、実装方法ではなく振る舞いを書く。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 何を満たせば完了か。できた／できていないで判定できる形で書く。
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: 対象外
+      description: このチケットでは扱わないこと。
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: 未決事項
+      description: まだ決まっていないこと。

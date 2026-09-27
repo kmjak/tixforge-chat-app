@@ -1,0 +1,73 @@
+# tixforge template: tixforge-issue-guard (v2). Installed by /tixforge:project init
+# together with .github/tixforge/ticket-hash.sh and messages.yml (copies of the
+# plugin's files, so the hash is computed exactly as tixforge computes it and
+# the comment is in the document language of .tixforge/config.yml).
+#
+# Runs on the GitHub event `issues: edited`: someone changed an issue's
+# title or body. tixforge writes a hash of the title + ticket into the body
+# (<!-- tixforge:hash:... -->) whenever it syncs. When the hash no longer
+# matches, the issue was edited on GitHub instead of through /tixforge:ticket edit:
+# the issue gets the label tixforge:out-of-sync and one comment. /tixforge:dev and
+# /tixforge:ticket edit see the label, show the difference and ask whether to adopt it.
+# When tixforge syncs again the hash matches and the label is removed.
+name: tixforge-issue-guard
+
+on:
+  issues:
+    types: [edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  guard:
+    if: contains(github.event.issue.body, 'tixforge:ticket:start') || contains(join(github.event.issue.labels.*.name, ','), 'tixforge:')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/tixforge/
+            .tixforge/config.yml
+          sparse-checkout-cone-mode: false
+      - name: Compare the hash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: |
+          h=.github/tixforge/ticket-hash.sh
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          if bash "$h" extract < "$RUNNER_TEMP/body.md" > "$RUNNER_TEMP/ticket.md"; then
+            if stored=$(bash "$h" stored < "$RUNNER_TEMP/body.md"); then
+              now=$(bash "$h" hash "$TITLE" < "$RUNNER_TEMP/ticket.md")
+              if [ "$now" = "$stored" ]; then ok=1; else ok=0; fi
+            else
+              ok=1   # an issue made before hashes: nothing to compare
+            fi
+          else
+            ok=0     # the markers are gone
+          fi
+          # msg <key>: a line of messages.yml in the document language (en fallback).
+          msg() {
+            lang=$(awk '/^language:/ { v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/[ \t]+#.*$/, "", v); gsub(/["\047\r]/, "", v); print v; exit }' .tixforge/config.yml 2>/dev/null)
+            for l in "${lang:-ja}" en; do
+              v=$(awk -v l="$l" -v k="$1" '
+                /^[^ \t#]/ { cur = $0; sub(/:.*/, "", cur); next }
+                cur == l && $0 ~ "^[ \t]+" k ":" { v = $0; sub(/^[^:]*:[ \t]*/, "", v); sub(/^"/, "", v); sub(/"[ \t\r]*$/, "", v); print v; exit }
+              ' .github/tixforge/messages.yml 2>/dev/null)
+              [ -n "$v" ] && { printf '%b\n' "$v"; return; }
+            done
+          }
+          case ",$LABELS," in *,tixforge:out-of-sync,*) labeled=1 ;; *) labeled=0 ;; esac
+          if [ $ok -eq 1 ]; then
+            [ $labeled -eq 1 ] && gh issue edit "$NUMBER" --remove-label tixforge:out-of-sync
+            exit 0
+          fi
+          [ $labeled -eq 1 ] && exit 0   # already reported
+          gh issue edit "$NUMBER" --add-label tixforge:out-of-sync
+          gh issue comment "$NUMBER" --body "$(msg out_of_sync_comment)"
