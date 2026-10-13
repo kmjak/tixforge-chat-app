@@ -1,3 +1,11 @@
 packages:
   - apps/*
   - packages/*
+
+# インストール時のスクリプトの実行を許可する依存（pnpm 10 以降は許可制）
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - unrs-resolver
