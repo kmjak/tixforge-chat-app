@@ -1,22 +1,12 @@
-import type { HealthResponse } from "@chat-app/shared";
+import { fetchHealth } from "../lib/health";
 
 // リクエストのたびに server の状態を取得する（ビルド時には取得しない）
 export const dynamic = "force-dynamic";
 
 const serverUrl = process.env.SERVER_URL ?? "http://localhost:3001";
 
-async function fetchHealth(): Promise<HealthResponse | null> {
-	try {
-		const res = await fetch(`${serverUrl}/health`, { cache: "no-store" });
-		if (!res.ok) return null;
-		return (await res.json()) as HealthResponse;
-	} catch {
-		return null;
-	}
-}
-
 export default async function Home() {
-	const health = await fetchHealth();
+	const health = await fetchHealth(serverUrl);
 
 	return (
 		<main>

@@ -7,7 +7,8 @@
 		"dev": "next dev --port 3000",
 		"build": "next build",
 		"start": "next start --port 3000",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "jest"
 	},
 	"dependencies": {
 		"@chat-app/shared": "workspace:*",
@@ -16,8 +17,12 @@
 		"react-dom": "19.3.0"
 	},
 	"devDependencies": {
+		"@swc/core": "^1.16.18",
+		"@swc/jest": "0.2.39",
+		"@types/jest": "30.0.0",
 		"@types/node": "^24.19.2",
 		"@types/react": "^19.3.0",
-		"@types/react-dom": "^19.3.0"
+		"@types/react-dom": "^19.3.0",
+		"jest": "30.5.2"
 	}
 }
