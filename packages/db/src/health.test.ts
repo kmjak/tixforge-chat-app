@@ -30,4 +30,20 @@ describe("pingDb", () => {
 		).resolves.toBe(false);
 		expect(log).toHaveBeenCalledWith("DB に接続できません: connection timeout");
 	});
+
+	it("包まれたエラーなら、元のエラーの内容を 1 行でログに出す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		await pingDb(
+			fakeDb(async () => {
+				throw new Error("Failed query: select 1\nparams: ", {
+					cause: new Error("password authentication failed"),
+				});
+			}),
+		);
+
+		expect(log).toHaveBeenCalledWith(
+			"DB に接続できません: password authentication failed",
+		);
+	});
 });

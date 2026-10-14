@@ -10,8 +10,21 @@ export async function pingDb(db: Db): Promise<boolean> {
 		await db.execute(sql`select 1`);
 		return true;
 	} catch (error) {
-		const reason = error instanceof Error ? error.message : String(error);
-		console.error(`DB に接続できません: ${reason}`);
+		console.error(`DB に接続できません: ${describeError(error)}`);
 		return false;
 	}
+}
+
+/**
+ * ログに出す理由を 1 行で作る。Drizzle はドライバのエラーを cause に包み、
+ * 自分のメッセージ（実行した SQL など、複数行）を付けるので、元のエラーがあればその内容を使う
+ */
+function describeError(error: unknown): string {
+	const reason =
+		error instanceof Error
+			? error.cause instanceof Error
+				? error.cause.message
+				: error.message
+			: String(error);
+	return reason.replace(/\s+/g, " ").trim();
 }
