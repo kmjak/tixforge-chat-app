@@ -22,6 +22,10 @@ pnpm workspaces の monorepo。クライアントは Web のみ。
 - `packages/db/` — Drizzle のスキーマ・マイグレーション。
 - `packages/shared/` — web と server で共有する型・バリデーション。
 
+## 設計ドキュメント
+- [routes.md](routes.md) — 画面のパスの一覧（詳細は `routes/`）
+- [uri.md](uri.md) — API のパスの一覧・エラーの共通形式（詳細は `uri/`）
+
 ## 技術スタック
 - 言語：TypeScript
 - フロントエンド：Next.js
