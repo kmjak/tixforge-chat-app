@@ -27,14 +27,14 @@
 - CHECK：`status <> 'left' or left_at is not null`
 - インデックス：`user_id`（自分のグループ DM と招待の一覧）、`profile_id`（プロフィールの使用先）
 - アプリが守る
-  - `invited` と `joined` を合わせて 10 人まで
+  - `invited` と `joined` を合わせて 10 人まで（[上限の数の守り方](../schema.md#命名と型の規則)のとおり、`group_dms` の行をロックしてから数える）
   - 招待できるのは `joined` のメンバーで、招待する相手は自分のフレンド
   - `invited` の人は、ほかのメンバーには表示しない
   - 承認：プロフィールを選び、`status = 'joined'`・`profile_id`・`joined_at` を入れ、`left_at`・`left_display_name` を null にする。参加のメッセージを出す
   - 拒否：以前メンバーだった行（`left_display_name` がある）は `status = 'left'` に戻し、それ以外は行を消す
   - 退出：`status = 'left'`・`left_at`・`left_display_name`（そのときのプロフィールの名前）を入れる。退出のメッセージを出す（予定（GT-000019））
   - 再び招待されたら、同じ行を `invited` にする。承認の画面の初期値は `profile_id`（null ならデフォルトのプロフィール）
-  - メッセージの送り手の表示：`joined` なら `profile_id` のプロフィール、`left` と、再び招待されて承認待ちの間（`invited` で `left_display_name` がある）は `left_display_name` と「（退出済み）」
+  - 表示（メンバーの一覧・メッセージの送り手）：見る人がその人のフレンドなら、フレンドの割り当て（[フレンドが優先](../schema.md#プロフィールの割り当て)。退出済みなら「（退出済み）」を付ける）。それ以外は、`joined` なら `profile_id` のプロフィール、`left` と、再び招待されて承認待ちの間（`invited` で `left_display_name` がある）は `left_display_name` と「（退出済み）」
 
 ### 関係
 - [`group_dms`](group_dms.md) 1 : 多 `group_dm_members`

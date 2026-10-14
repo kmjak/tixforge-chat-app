@@ -19,11 +19,12 @@
 - 主キー：`(user_id, friend_user_id)`
 - 外部キー：`user_id` → `user.id`、`friend_user_id` → `user.id`、`profile_id` → `profiles.id`（使用中のプロフィールは削除できないので、削除時の動きは既定（拒否）のまま）
 - CHECK：`user_id <> friend_user_id`
-- インデックス：`profile_id`（プロフィールの使用先）
+- インデックス：`profile_id`（プロフィールの使用先）、`friend_user_id`（相手の行を引く）
 - アプリが守る
   - 2 行（A → B と B → A）を必ず同じ transaction で作る。片方だけの行を作らない
   - `profile_id` は、`user_id` の人のプロフィールだけ
   - 自分のフレンドの一覧では、相手の行（`user_id` = 相手、`friend_user_id` = 自分）の `profile_id` で相手を表示する
+  - サーバー・グループ DM の中でも、見る人がフレンドなら、この割り当てで表示する（[フレンドが優先](../schema.md#プロフィールの割り当て)）
 - MVP ではフレンドの削除をしない
 
 ### 関係

@@ -26,7 +26,7 @@
   - 参加・プロフィールの変更で選べるのは、自分のプロフィールだけ
   - 退出：`left_at` と `left_display_name`（そのときのプロフィールの名前）を入れる。`profile_id` は残す。オーナーは譲渡するまで退出できない（予定（GT-000010））
   - 再参加：同じ行の `left_at`・`left_display_name` を null にし、`profile_id` を選んだプロフィールにし、`joined_at` を更新する。選ぶ画面の初期値は `profile_id`（null ならデフォルトのプロフィール）
-  - メッセージの送り手の表示：メンバーなら `profile_id` のプロフィール、退出済みなら `left_display_name` と「（退出済み）」
+  - 表示（メンバーの一覧・メッセージの送り手）：見る人がその人のフレンドなら、フレンドの割り当て（[フレンドが優先](../schema.md#プロフィールの割り当て)。退出済みなら「（退出済み）」を付ける）。それ以外は、メンバーなら `profile_id` のプロフィール、退出済みなら `left_display_name` と「（退出済み）」
 
 ### 関係
 - [`servers`](servers.md) 1 : 多 `server_members`

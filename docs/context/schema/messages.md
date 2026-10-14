@@ -32,7 +32,8 @@
   - DM・グループ DM に送ったら、同じ transaction で `dms.last_message_at`・`group_dms.last_message_at` を更新する
   - 参加のメッセージ（`join`）は、サーバーに参加したら既定のチャンネルに、グループ DM に参加したらそのグループ DM に出す。退出のメッセージ（`leave`）も同じ場所に出す
   - MVP では編集・削除をしない
-- 送り手の表示（`sender_user_id` から引く）
+- 送り手の表示（`sender_user_id` から引く。見る人によって変わる）
+  - 見る人が送り手のフレンドなら、どの部屋でも、送り手が見る人に割り当てたプロフィール（[`friendships`](friendships.md) の 送り手 → 見る人 の行。退出済みなら「（退出済み）」を付ける）。以下はフレンドでないとき
   - チャンネル：そのサーバーの [`server_members`](server_members.md)。メンバーなら `profile_id` のプロフィール、退出済みなら `left_display_name` と「（退出済み）」
   - DM：送り手が相手に割り当てたプロフィール（[`friendships`](friendships.md) の 送り手 → 相手 の行の `profile_id`）
   - グループ DM：[`group_dm_members`](group_dm_members.md)。`joined` なら `profile_id` のプロフィール、それ以外（`left`、再び招待されて承認待ち）は `left_display_name` と「（退出済み）」
