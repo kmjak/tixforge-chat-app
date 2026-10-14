@@ -17,15 +17,24 @@ importers:
 
   apps/server:
     dependencies:
+      '@chat-app/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@chat-app/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@hono/node-server':
         specifier: 2.1.5
         version: 2.1.5(hono@4.13.13)
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
       hono:
         specifier: 4.13.13
         version: 4.13.13
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
     devDependencies:
       '@swc/core':
         specifier: ^1.16.18
