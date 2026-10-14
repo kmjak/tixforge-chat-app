@@ -22,7 +22,7 @@
 - 外部キー：`user_id` → `user.id`、`profile_id` → `profiles.id`（`ON DELETE CASCADE`。リンクのプロフィールは「使用中」に数えないので、削除するとリンクも消える）
 - アプリが守る
   - 使える回数に上限は無い
-  - 開いた人がプロフィールを選ぶと、[`friendships`](friendships.md) に 2 行（作った人 → 開いた人は `profile_id`、開いた人 → 作った人は選んだプロフィール）を作り、2 人の間の承認待ちの [`friend_requests`](friend_requests.md) をすべて消す。同じ transaction で行う
+  - 開いた人がプロフィールを選ぶと、[`friendships`](friendships.md) に 2 行（作った人 → 開いた人は `profile_id`、開いた人 → 作った人は選んだプロフィール）を作り、2 人の間の承認待ちの [`friend_requests`](friend_requests.md) をすべて消す。同じ transaction で行う。2 行は `ON CONFLICT DO NOTHING` で入れ、ほぼ同時に別の経路でフレンドになっていたら、成功として扱う
   - 自分のリンク・既にフレンドの相手のリンク・期限切れ・存在しないリンクでは、フレンドにならない（既にフレンドの相手には「既にフレンド」と返してよい）
 - MVP では取り消しをしない
 
