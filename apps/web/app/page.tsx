@@ -11,7 +11,8 @@ export default async function Home() {
 	return (
 		<main>
 			<h1>chat-app</h1>
-			<p>server: {health ? health.status : "接続できません"}</p>
+			<p>server: {health ? "ok" : "接続できません"}</p>
+			{health && <p>db: {health.db === "ok" ? "ok" : "接続できません"}</p>}
 		</main>
 	);
 }
