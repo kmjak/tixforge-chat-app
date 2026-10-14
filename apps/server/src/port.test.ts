@@ -20,4 +20,11 @@ describe("parsePort", () => {
 		expect(() => parsePort("65536")).toThrow("PORT が不正です");
 		expect(() => parsePort("3001.5")).toThrow("PORT が不正です");
 	});
+
+	it("10 進の整数でない書き方（16 進・2 進・指数）ならエラーにする", () => {
+		expect(() => parsePort("0x1F")).toThrow("PORT が不正です");
+		expect(() => parsePort("0b1010")).toThrow("PORT が不正です");
+		expect(() => parsePort("1e3")).toThrow("PORT が不正です");
+		expect(() => parsePort("-1")).toThrow("PORT が不正です");
+	});
 });
