@@ -46,4 +46,39 @@ describe("pingDb", () => {
 			"DB に接続できません: password authentication failed",
 		);
 	});
+	it("元のエラーが message の空な AggregateError なら、中のエラーの内容をログに出す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const cause = new AggregateError(
+			[
+				new Error("connect ECONNREFUSED ::1:5432"),
+				new Error("connect ECONNREFUSED 127.0.0.1:5432"),
+			],
+			"",
+		);
+
+		await pingDb(
+			fakeDb(async () => {
+				throw new Error("Failed query: select 1", { cause });
+			}),
+		);
+
+		expect(log).toHaveBeenCalledWith(
+			"DB に接続できません: connect ECONNREFUSED ::1:5432, connect ECONNREFUSED 127.0.0.1:5432",
+		);
+	});
+
+	it("message も中のエラーも無ければ、エラーのコードをログに出す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const cause = Object.assign(new AggregateError([], ""), {
+			code: "ECONNREFUSED",
+		});
+
+		await pingDb(
+			fakeDb(async () => {
+				throw new Error("Failed query: select 1", { cause });
+			}),
+		);
+
+		expect(log).toHaveBeenCalledWith("DB に接続できません: ECONNREFUSED");
+	});
 });
