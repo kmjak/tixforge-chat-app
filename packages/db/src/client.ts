@@ -4,8 +4,11 @@ import * as schema from "./schema";
 
 export type Db = NodePgDatabase<typeof schema>;
 
-/** 接続・クエリの待ち時間の上限。DB が応答しないときに、ヘルスチェックなどが待ち続けないようにする */
-export const DB_TIMEOUT_MS = 3000;
+/**
+ * 接続・クエリそれぞれの待ち時間の上限。DB が応答しないときに、ヘルスチェックなどが待ち続けないようにする。
+ * 接続とクエリで最大 2 倍かかるので、呼び出し側（web など）はそれより長く待つ
+ */
+export const DB_TIMEOUT_MS = 2000;
 
 /** 接続文字列から、接続を使い回す（プールする）Drizzle のインスタンスを作る */
 export function createDb(databaseUrl: string): Db {
