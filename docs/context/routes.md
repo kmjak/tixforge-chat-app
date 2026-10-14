@@ -71,5 +71,5 @@ web（Next.js）の画面のパスの一覧。パスごとの詳細は `routes/`
   - `\`・制御文字（タブ・改行など）・空白を含まない
   - アプリの origin を基準に URL として解決した（`new URL(redirect, origin)`）結果の origin が、アプリの origin と同じ
 - `/sign-in` と `/sign-up` の間のリンクは、受け取った `redirect` を引き継ぐ（サインインの画面からサインアップへ進んでも、元の行き先へ戻れるようにするため）。
-- ログイン済みで `/`・`/sign-in`・`/sign-up` を開いたら、`/home` へリダイレクトする。
+- ログイン済みで `/` を開いたら、`/home` へリダイレクトする。ログイン済みで `/sign-in`・`/sign-up` を開いたら、`redirect` の先（受け付けないとき・無いときは `/home`）へリダイレクトする（サインインに成功したときと同じ規則）。
 - ログイン状態は [`GET /api/auth/get-session`](uri/get-api-auth-get-session.md) で判定する。
