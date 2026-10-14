@@ -55,8 +55,12 @@ DB は Neon（Postgres）を使い、Drizzle ORM で扱う。DB に接続する�
 
 ### 接続の設定
 
-1. Neon のプロジェクト `tixforge-chat-app` の画面で、**Connect** から接続文字列をコピーする。「Connection pooling」はオフにした、プーラーを通さない直接の接続（ホスト名に `-pooler` が付かないもの）を使う
-2. ルートの `.env.example` を `.env` にコピーし、`DATABASE_URL=` の後ろに貼る
+1. Neon のプロジェクト `tixforge-chat-app` の画面で **Connect** を開く
+2. 「Connection pooling」を**オフ**にする（ホスト名に `-pooler` が付かない、直接の接続になる）
+3. 表示の形式（Next.js・Node.js など）は何を選んでもよい。Drizzle の選択肢は無いが、中身の接続文字列は同じ。表示された中から、`postgresql://` で始まる URL の部分だけをコピーする。ほかの変数（プーラー経由のものなど）が並んで表示されても、`.env` には入れない
+4. ルートの `.env.example` を `.env` にコピーし、`DATABASE_URL=` の後ろに貼る
+
+プーラーを通さないのは、server が自分で接続を使い回す（プールする）のでプーラーが要らず、マイグレーションもプーラーを通さない接続のほうが安全なため。
 
 `.env` は git で管理しない（`.gitignore` 済み）。接続文字列にはパスワードが含まれるので、commit したり人に見せたりしない。
 
