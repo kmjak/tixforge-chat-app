@@ -59,6 +59,7 @@ DB は Neon（Postgres）を使い、Drizzle ORM で扱う。DB に接続する�
 2. 「Connection pooling」を**オフ**にする（ホスト名に `-pooler` が付かない、直接の接続になる）
 3. 表示の形式（Next.js・Node.js など）は何を選んでもよい。Drizzle の選択肢は無いが、中身の接続文字列は同じ。表示された中から、`postgresql://` で始まる URL の部分だけをコピーする。ほかの変数（プーラー経由のものなど）が並んで表示されても、`.env` には入れない
 4. ルートの `.env.example` を `.env` にコピーし、`DATABASE_URL=` の後ろに貼る
+5. 貼った URL の `sslmode=require` を `sslmode=verify-full` に書き換える（`pg` が `require` について警告を出すため。`verify-full` はサーバーの証明書まで確かめる、今と同じ安全さの指定）
 
 プーラーを通さないのは、server が自分で接続を使い回す（プールする）のでプーラーが要らず、マイグレーションもプーラーを通さない接続のほうが安全なため。
 
