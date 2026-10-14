@@ -1,3 +1,5 @@
+// テスト用の DB（PGlite）は中で動的 import を使うので、package.json の test で
+// NODE_OPTIONS=--experimental-vm-modules を付けて動かす
 /** @type {import('jest').Config} */
 module.exports = {
 	testEnvironment: "node",

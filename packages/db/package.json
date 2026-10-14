@@ -4,19 +4,21 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./testing": "./src/testing.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"test": "jest"
+		"test": "NODE_OPTIONS=--experimental-vm-modules jest"
 	},
 	"dependencies": {
 		"drizzle-orm": "0.45.4",
 		"pg": "8.23.1"
 	},
 	"devDependencies": {
+		"@electric-sql/pglite": "0.5.10",
 		"@swc/core": "^1.16.18",
 		"@swc/jest": "0.2.39",
 		"@types/jest": "30.0.0",
