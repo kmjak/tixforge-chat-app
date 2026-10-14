@@ -1,18 +1,24 @@
-import { fetchHealth } from "../lib/health";
+import Link from "next/link";
 
-// リクエストのたびに server の状態を取得する（ビルド時には取得しない）
-export const dynamic = "force-dynamic";
-
-const serverUrl = process.env.SERVER_URL ?? "http://localhost:3001";
-
-export default async function Home() {
-	const health = await fetchHealth(serverUrl);
-
+export default function Top() {
 	return (
 		<main>
 			<h1>chat-app</h1>
-			<p>server: {health ? "ok" : "接続できません"}</p>
-			{health && <p>db: {health.db === "ok" ? "ok" : "接続できません"}</p>}
+			<p>
+				仕事・友人・ゲーム・推し活など、場面ごとに使い分けていたチャットを 1
+				つのアカウントで。
+			</p>
+			<p>
+				プロフィールを複数作り、サーバーや友人ごとにどのプロフィールを見せるかを選べます。
+			</p>
+			<ul>
+				<li>
+					<Link href="/sign-in">サインイン</Link>
+				</li>
+				<li>
+					<Link href="/sign-up">サインアップ</Link>
+				</li>
+			</ul>
 		</main>
 	);
 }
