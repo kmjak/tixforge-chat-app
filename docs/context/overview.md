@@ -34,7 +34,16 @@ pnpm workspaces の monorepo。クライアントは Web のみ。
 - パッケージマネージャ：pnpm（Node.js のバージョンは `.nvmrc` で固定）
 
 ## 開発・テストの実行方法
-まだコードが無いため未整備。セットアップ・起動・型チェック・lint・フォーマット・テストのコマンドは、用意したときにここへ追記する（あわせて `/tixforge:project update` で検証コマンドを登録する）。
+セットアップの手順は README を参照。コマンドはすべてリポジトリのルートで実行する。
+
+- `pnpm dev` — web（:3000）と server（:3001）を同時に開発起動
+- `pnpm typecheck` — 全パッケージの型チェック
+- `pnpm lint` — Biome で lint とフォーマットを検査（書き換えない）
+- `pnpm format` — Biome で自動修正
+- `pnpm test` — 全パッケージのテスト（Jest）
+- `pnpm build` — web と server のビルド
+
+検証コマンド（`.tixforge/config.yml` の `commands`）には、typecheck・lint・test・build をこの順で登録している。
 
 ## MVP の対象外
 - avatar、OAuth（Google・GitHub）、メールアドレスの確認、パスワードの再設定
