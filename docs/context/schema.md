@@ -32,7 +32,7 @@ erDiagram
     channels |o--o{ messages : ""
     dms |o--o{ messages : ""
     group_dms |o--o{ messages : ""
-    user |o--o{ messages : "送り手"
+    user ||--o{ messages : "送り手"
 
     user {
         uuid id PK
