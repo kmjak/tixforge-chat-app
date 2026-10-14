@@ -1,6 +1,10 @@
 # tixforge settings (shared, committed)
 language: ja
-commands: {}
+commands:
+  typecheck: pnpm typecheck
+  lint: pnpm lint
+  test: pnpm test
+  build: pnpm build
 ticket:
   tracker: github
 repository:
