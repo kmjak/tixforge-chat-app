@@ -25,6 +25,7 @@ pnpm workspaces の monorepo。クライアントは Web のみ。
 ## 設計ドキュメント
 - [routes.md](routes.md) — 画面のパスの一覧（詳細は `routes/`）
 - [uri.md](uri.md) — API のパスの一覧・エラーの共通形式（詳細は `uri/`）
+- [schema.md](schema.md) — データモデル（テーブルの一覧・ER 図・相手に見せてよいものの規則。詳細は `schema/`）
 
 ## 技術スタック
 - 言語：TypeScript
