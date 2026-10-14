@@ -42,6 +42,8 @@ pnpm workspaces の monorepo。クライアントは Web のみ。
 - `pnpm format` — Biome で自動修正
 - `pnpm test` — 全パッケージのテスト（Jest）
 - `pnpm build` — web と server のビルド
+- `pnpm db:generate` — `packages/db/src/schema.ts` からマイグレーションを作る
+- `pnpm db:migrate` — マイグレーションを DB に適用する（接続文字列はルートの `.env` の `DATABASE_URL`）
 
 検証コマンド（`.tixforge/config.yml` の `commands`）には、typecheck・lint・test・build をこの順で登録している。
 
