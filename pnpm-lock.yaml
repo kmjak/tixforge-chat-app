@@ -126,7 +126,20 @@ importers:
         specifier: 30.5.2
         version: 30.5.2(@types/node@24.19.2)
 
-  packages/shared: {}
+  packages/shared:
+    devDependencies:
+      '@swc/core':
+        specifier: ^1.16.18
+        version: 1.16.18(@swc/helpers@0.5.23)
+      '@swc/jest':
+        specifier: 0.2.39
+        version: 0.2.39(@swc/core@1.16.18(@swc/helpers@0.5.23))
+      '@types/jest':
+        specifier: 30.0.0
+        version: 30.0.0
+      jest:
+        specifier: 30.5.2
+        version: 30.5.2(@types/node@24.19.2)
 
 packages:
 

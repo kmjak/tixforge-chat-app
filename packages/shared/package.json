@@ -7,6 +7,13 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"test": "jest"
+	},
+	"devDependencies": {
+		"@swc/core": "^1.16.18",
+		"@swc/jest": "0.2.39",
+		"@types/jest": "30.0.0",
+		"jest": "30.5.2"
 	}
 }
