@@ -10,7 +10,7 @@ pnpm workspaces の monorepo。
 |---|---|
 | `apps/web` | Next.js（画面）。ポート 3000 |
 | `apps/server` | Hono（API）。ポート 3001（環境変数 `PORT` で変更可） |
-| `packages/shared` | web と server で共有する型 |
+| `packages/shared` | web と server で共有する型・バリデーション |
 | `packages/db` | DB（Neon の Postgres）の Drizzle のクライアント・スキーマ・マイグレーション |
 
 ## セットアップ
@@ -22,7 +22,7 @@ nvm install   # .nvmrc の Node.js を入れる
 nvm use
 corepack enable   # package.json で指定した pnpm を使う
 pnpm install
-cp .env.example .env   # DATABASE_URL に Neon の接続文字列を入れる（下記「DB」）
+cp .env.example .env   # DATABASE_URL と BETTER_AUTH_SECRET を入れる（下記「環境変数」「DB」）
 pnpm db:migrate
 ```
 
@@ -32,7 +32,23 @@ pnpm db:migrate
 pnpm dev
 ```
 
-web（http://localhost:3000）と server（http://localhost:3001）が同時に起動する。web のトップページには server の状態が表示される。server はルートの `.env` を読む。web が接続する server の URL は、環境変数 `SERVER_URL`（既定 `http://localhost:3001`）で変えられる。
+web（http://localhost:3000）と server（http://localhost:3001）が同時に起動する。http://localhost:3000 からサインアップ・サインインできる。
+
+## 環境変数
+
+server はルートの `.env` を読む（`.env.example` をコピーして作る）。web はルートの `.env` を読まないので、既定値と違う値にするときは `apps/web/.env.local` に書くか、起動時に指定する。
+
+| 変数 | 使う側 | 内容 |
+|---|---|---|
+| `DATABASE_URL` | server | Neon の接続文字列（下記「DB」）。必須 |
+| `BETTER_AUTH_SECRET` | server | Better Auth がセッションの署名などに使う秘密の値。32 文字以上のランダムな文字列（`openssl rand -base64 32` などで作る）。必須 |
+| `BETTER_AUTH_URL` | server | server の URL（既定 `http://localhost:3001`） |
+| `WEB_ORIGIN` | server | web の origin（既定 `http://localhost:3000`）。この origin からの cookie 付きの呼び出し（CORS）を受け付ける |
+| `PORT` | server | server のポート（既定 3001） |
+| `SERVER_URL` | web | web の server 側（ページの保護）から呼ぶ server の URL（既定 `http://localhost:3001`） |
+| `NEXT_PUBLIC_SERVER_URL` | web | ブラウザから呼ぶ server の URL（既定 `http://localhost:3001`）。ビルド時に埋め込まれる |
+
+`DATABASE_URL` か `BETTER_AUTH_SECRET` が無いと、server は起動時にエラーで止まる。
 
 ## コマンド
 
@@ -77,6 +93,5 @@ DB は Neon（Postgres）を使い、Drizzle ORM で扱う。DB に接続する�
 | 状態 | ステータス | 応答 |
 |---|---|---|
 | DB に接続できる | 200 | `{"status":"ok","db":"ok"}` |
-| DB に接続できない・`DATABASE_URL` が無い | 503 | `{"status":"error","db":"error"}` |
+| DB に接続できない | 503 | `{"status":"error","db":"error"}` |
 
-`DATABASE_URL` が無くても server は起動する（警告を出し、`/health` は 503 を返す）。
