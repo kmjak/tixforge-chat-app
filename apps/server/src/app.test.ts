@@ -1,9 +1,15 @@
 import type { HealthResponse } from "@chat-app/shared";
 import { createApp } from "./app";
 
+/** /health のテストでは認証を使わない */
+const deps = {
+	auth: { handler: async () => new Response(null, { status: 404 }) },
+	webOrigin: "http://localhost:3000",
+};
+
 describe("GET /health", () => {
 	it("DB に接続できれば 200 と db ok を返す", async () => {
-		const app = createApp({ pingDb: async () => true });
+		const app = createApp({ ...deps, pingDb: async () => true });
 
 		const res = await app.request("/health");
 
@@ -15,7 +21,7 @@ describe("GET /health", () => {
 	});
 
 	it("DB に接続できなければ 503 と db error を返す", async () => {
-		const app = createApp({ pingDb: async () => false });
+		const app = createApp({ ...deps, pingDb: async () => false });
 
 		const res = await app.request("/health");
 
