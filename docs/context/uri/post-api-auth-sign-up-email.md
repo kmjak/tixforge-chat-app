@@ -14,6 +14,8 @@
 
 メールアドレスとパスワードでアカウントを作り、そのままログインした状態にする（セッションの cookie を設定する）。Better Auth が提供する。
 
+- 登録済みのメールアドレスには 422 を返すので、第三者がそのメールアドレスが登録済みかを知れる。MVP ではこれを許容し、回数の制限（429）で大量に調べられないようにする。完全に防ぐにはメールアドレスの確認が要る（MVP の対象外）ので、MVP の後に見直す。
+
 ### リクエスト
 
 | フィールド | 型 | 必須 | 説明 |
@@ -80,4 +82,11 @@
 
 ```json
 { "code": "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL", "message": "User already exists. Use another email." }
+```
+
+#### 429 回数の制限を超えた
+短い時間に呼びすぎたとき（Better Auth の rate limit。上限は Better Auth の既定を使う）。本文は `message` だけで、`code` が無い（[エラーの共通形式](../uri.md#エラーの共通形式)の例外。web は共通のエラー表示にする）。
+
+```json
+{ "message": "Too many requests. Please try again later." }
 ```

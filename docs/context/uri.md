@@ -76,7 +76,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 - `廃止予定（<チケット id>）`：そのチケットで消す
 
 ## エラーの共通形式
-4xx・5xx のレスポンスは、すべての API で次の形にする（例外は各 API に明記する）。Better Auth（`/api/auth/*`）のエラーも同じ形で返る。
+4xx・5xx のレスポンスは、すべての API で次の形にする（例外は各 API に明記する）。Better Auth（`/api/auth/*`）のエラーも基本は同じ形で返るが、`code` が無いもの（回数の制限を超えたときの 429 など）がある。web は、`code` が無いとき・知らない値のときは、共通のエラー表示にする。
 
 | フィールド | 型 | 必須 | 説明 |
 |------------|----|------|------|
@@ -88,5 +88,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 ```
 
 ## セッションの渡し方
-- ログインのセッションは cookie（`better-auth.session_token`）で渡す。サインアップ・サインインの成功時に server が設定し、サインアウトで消す。
+- ログインのセッションは、Better Auth のセッションの cookie で渡す。サインアップ・サインインの成功時に server が設定し、サインアウトで消す。
+- cookie の名前は Better Auth が決める（HTTPS の環境では先頭に `__Secure-` が付くなど、環境で変わる）。web は cookie の名前でログイン状態を判定せず、[`GET /api/auth/get-session`](uri/get-api-auth-get-session.md) で判定する。
+- web（:3000）と server（:3001）は origin が違うので、cookie 付きで呼ぶには CORS（credentials）と Better Auth の `trustedOrigins` の設定が要る（GT-000003 で設定する）。
 - web は、server の API を cookie 付きで呼ぶ。「認証が必要」な API を有効なセッション無しで呼ぶと、401（`UNAUTHORIZED`）を返す。

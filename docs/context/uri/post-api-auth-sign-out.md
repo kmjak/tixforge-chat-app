@@ -28,6 +28,8 @@
 #### 400 セッションの cookie が無い
 [エラーの共通形式](../uri.md#エラーの共通形式)。`code`：`FAILED_TO_GET_SESSION`
 
+**[セッションの渡し方](../uri.md#セッションの渡し方)の例外**：「認証が必要」な API は有効なセッションが無いと 401 を返す決まりだが、この API は Better Auth の動きのとおり 400 を返す。
+
 ```json
 { "code": "FAILED_TO_GET_SESSION", "message": "Failed to get session" }
 ```

@@ -12,7 +12,7 @@
 | query | なし |
 | 呼び出し元 URL | [`/sign-in`](../routes/sign-in.md) |
 
-メールアドレスとパスワードでログインする（セッションの cookie を設定する）。Better Auth が提供する。
+メールアドレスとパスワードでログインする（セッションの cookie を設定する）。Better Auth が提供する。回数を制限する（429）ので、パスワードを総当たりで試されにくい。
 
 ### リクエスト
 
@@ -63,4 +63,11 @@
 
 ```json
 { "code": "INVALID_EMAIL_OR_PASSWORD", "message": "Invalid email or password" }
+```
+
+#### 429 回数の制限を超えた
+短い時間に呼びすぎたとき（Better Auth の rate limit。上限は Better Auth の既定を使う）。本文は `message` だけで、`code` が無い（[エラーの共通形式](../uri.md#エラーの共通形式)の例外。web は共通のエラー表示にする）。
+
+```json
+{ "message": "Too many requests. Please try again later." }
 ```
