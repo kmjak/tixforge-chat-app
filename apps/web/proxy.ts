@@ -20,6 +20,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-	// Next.js の静的ファイル・画像と、拡張子の付いたファイル（favicon.ico など）は対象外
-	matcher: ["/((?!_next/static|_next/image|.*\\..*).*)"],
+	// Next.js の静的ファイル・画像と、静的ファイルの拡張子（favicon.ico など）で終わるパスは対象外。
+	// 画面のパスに . が入っても（例：/users/john.doe）保護から外れないように、拡張子は決まったものだけにする
+	matcher: [
+		"/((?!_next/static|_next/image|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|txt|xml|webmanifest)$).*)",
+	],
 };
