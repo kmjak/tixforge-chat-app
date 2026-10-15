@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../../lib/auth-client";
-import { authErrorMessage } from "../../lib/auth-errors";
+import { authErrorMessage, DEFAULT_ERROR_MESSAGE } from "../../lib/auth-errors";
 import { resolveRedirect, withRedirect } from "../../lib/redirect";
 
 /** server と同じ規則で先に確かめ、送る前に知らせる（最終的な判定は server が行う） */
@@ -50,13 +50,20 @@ export function SignUpForm({ redirect }: { redirect: string | undefined }) {
 		setPending(true);
 		setError(null);
 
-		const { error } = await authClient.signUp.email({
-			name,
-			email: String(form.get("email")),
-			password,
-		});
-		if (error) {
-			setError(authErrorMessage(error.code));
+		try {
+			const { error } = await authClient.signUp.email({
+				name,
+				email: String(form.get("email")),
+				password,
+			});
+			if (error) {
+				setError(authErrorMessage(error.code));
+				setPending(false);
+				return;
+			}
+		} catch {
+			// server に届かないなど、応答が無いとき
+			setError(DEFAULT_ERROR_MESSAGE);
 			setPending(false);
 			return;
 		}

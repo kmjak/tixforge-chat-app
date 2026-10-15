@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../../lib/auth-client";
-import { authErrorMessage } from "../../lib/auth-errors";
+import { authErrorMessage, DEFAULT_ERROR_MESSAGE } from "../../lib/auth-errors";
 import { resolveRedirect, withRedirect } from "../../lib/redirect";
 
 export function SignInForm({ redirect }: { redirect: string | undefined }) {
@@ -18,12 +18,19 @@ export function SignInForm({ redirect }: { redirect: string | undefined }) {
 		setPending(true);
 		setError(null);
 
-		const { error } = await authClient.signIn.email({
-			email: String(form.get("email")),
-			password: String(form.get("password")),
-		});
-		if (error) {
-			setError(authErrorMessage(error.code));
+		try {
+			const { error } = await authClient.signIn.email({
+				email: String(form.get("email")),
+				password: String(form.get("password")),
+			});
+			if (error) {
+				setError(authErrorMessage(error.code));
+				setPending(false);
+				return;
+			}
+		} catch {
+			// server に届かないなど、応答が無いとき
+			setError(DEFAULT_ERROR_MESSAGE);
 			setPending(false);
 			return;
 		}
