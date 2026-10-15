@@ -250,3 +250,66 @@ describe("サインイン・サインアウト", () => {
 		expect(await res.json()).toBeNull();
 	});
 });
+
+describe("サインアップ以外の経路でも name とパスワードを確かめる", () => {
+	const email = "update@example.com";
+	let cookie: string;
+
+	beforeAll(async () => {
+		cookie = cookieFrom(await signUp("Update", email));
+	});
+
+	it("パスワードの変更でも、条件を満たさないパスワードには変えられない", async () => {
+		const res = await request("POST", "/api/auth/change-password", {
+			body: { currentPassword: PASSWORD, newPassword: "password1" },
+			cookie,
+		});
+
+		expect(res.status).toBe(400);
+		expect(await res.json()).toMatchObject({ code: "PASSWORD_TOO_WEAK" });
+		const signIn = await request("POST", "/api/auth/sign-in/email", {
+			body: { email, password: PASSWORD },
+		});
+		expect(signIn.status).toBe(200);
+	});
+
+	it("パスワードの変更で、条件を満たすパスワードには変えられる", async () => {
+		const res = await request("POST", "/api/auth/change-password", {
+			body: { currentPassword: PASSWORD, newPassword: "N3w-Passw0rd" },
+			cookie,
+		});
+
+		expect(res.status).toBe(200);
+		const signIn = await request("POST", "/api/auth/sign-in/email", {
+			body: { email, password: "N3w-Passw0rd" },
+		});
+		expect(signIn.status).toBe(200);
+	});
+
+	it.each([
+		["空白だけ", "   "],
+		["33 文字", "あ".repeat(33)],
+	])(
+		"ユーザーの更新でも、1〜32 文字でない name（%s）には変えられない",
+		async (_, name) => {
+			const res = await request("POST", "/api/auth/update-user", {
+				body: { name },
+				cookie,
+			});
+
+			expect(res.status).toBe(400);
+			expect(await res.json()).toMatchObject({ code: "INVALID_NAME" });
+			expect((await findUser(email))?.name).toBe("Update");
+		},
+	);
+
+	it("ユーザーの更新の name は、前後の空白を除いて保存する", async () => {
+		const res = await request("POST", "/api/auth/update-user", {
+			body: { name: "  Renamed  " },
+			cookie,
+		});
+
+		expect(res.status).toBe(200);
+		expect((await findUser(email))?.name).toBe("Renamed");
+	});
+});
