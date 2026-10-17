@@ -1,17 +1,18 @@
-import { createDb } from "@chat-app/db";
+import { createDb, pingDb } from "@chat-app/db";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
-import { createPingDb } from "./db-ping";
 import { readEnv } from "./env";
 import { parsePort } from "./port";
 
 const port = parsePort(process.env.PORT);
 const env = readEnv(process.env);
+// 接続のプールは 1 つにして、ヘルスチェック・認証・API で共有する
+const db = createDb(env.databaseUrl);
 const app = createApp({
-	pingDb: createPingDb(env.databaseUrl),
+	pingDb: () => pingDb(db),
 	auth: createAuth({
-		db: createDb(env.databaseUrl),
+		db,
 		secret: env.betterAuthSecret,
 		baseURL: env.betterAuthUrl,
 		webOrigin: env.webOrigin,
