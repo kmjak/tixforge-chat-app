@@ -97,6 +97,21 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 | 404 | `NOT_FOUND` | 存在しない API を呼んだ（ログインが必要なパスでは、未ログインなら 401 が先に返る） |
 | 500 | `INTERNAL_SERVER_ERROR` | 処理の中で想定外のエラーが起きた。理由はサーバーのログにだけ出し、応答には含めない |
 
+API の処理が意図して 4xx を返すとき（入力の検査で 400 にする、など）は、そのステータスのまま、この形で返す（server は Hono の `HTTPException` の 4xx をそのまま返す）。API ごとの `code` は、各 API の詳細のファイルに書く。`code` を特に決めずに返したときは、ステータスに対応する次の名前になる（一覧に無いステータスは `HTTP_<ステータス>`）。
+
+| ステータス | `code` |
+|------------|--------|
+| 400 | `BAD_REQUEST` |
+| 401 | `UNAUTHORIZED` |
+| 403 | `FORBIDDEN` |
+| 404 | `NOT_FOUND` |
+| 405 | `METHOD_NOT_ALLOWED` |
+| 409 | `CONFLICT` |
+| 413 | `PAYLOAD_TOO_LARGE` |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` |
+| 422 | `UNPROCESSABLE_ENTITY` |
+| 429 | `TOO_MANY_REQUESTS` |
+
 ## ログインの確認
 - `/api` の下の API は、既定でログインが必要。server は、`/api/*` へのリクエストのたびに、セッションの cookie から Better Auth のセッションを確かめる（GT-000007）。
 - ログイン無しで使える API は、server のコードの一覧（`apps/server/src/app.ts` の `PUBLIC_API_PREFIXES`）に明示したものだけ。今は `/api/auth/*`（Better Auth）だけで、`/api` の外の `GET /health` ももともと対象外。新しい API は、何もしなければログインが必要になる。
