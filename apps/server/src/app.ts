@@ -6,6 +6,8 @@ import type {
 } from "@chat-app/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
 
 /** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
@@ -27,6 +29,25 @@ export type AppDeps = {
  * （docs/context/uri.md「ログインの確認」）。/health は /api の外なので対象外
  */
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
+
+/** HTTPException のステータスに対応するエラーの code（docs/context/uri.md「エラーの共通形式」） */
+const ERROR_CODES: Record<number, string> = {
+	400: "BAD_REQUEST",
+	401: "UNAUTHORIZED",
+	403: "FORBIDDEN",
+	404: "NOT_FOUND",
+	405: "METHOD_NOT_ALLOWED",
+	409: "CONFLICT",
+	413: "PAYLOAD_TOO_LARGE",
+	415: "UNSUPPORTED_MEDIA_TYPE",
+	422: "UNPROCESSABLE_ENTITY",
+	429: "TOO_MANY_REQUESTS",
+};
+
+const INTERNAL_SERVER_ERROR: ErrorResponse = {
+	code: "INTERNAL_SERVER_ERROR",
+	message: "Internal Server Error",
+};
 
 export function createApp({
 	pingDb,
@@ -93,12 +114,20 @@ export function createApp({
 		c.json<ErrorResponse>({ code: "NOT_FOUND", message: "Not Found" }, 404),
 	);
 	app.onError((error, c) => {
-		// 理由には内部の情報が含まれることがあるので、ログにだけ出す
+		// 意図して投げた 4xx（validator の 400 など）は、そのステータスのまま返す
+		if (error instanceof HTTPException && error.status < 500) {
+			const status = error.status as ContentfulStatusCode;
+			return c.json<ErrorResponse>(
+				{
+					code: ERROR_CODES[status] ?? `HTTP_${status}`,
+					message: error.message || "Request Error",
+				},
+				status,
+			);
+		}
+		// それ以外は 500。理由には内部の情報が含まれることがあるので、ログにだけ出す
 		console.error("API でエラーが起きました:", error);
-		return c.json<ErrorResponse>(
-			{ code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
-			500,
-		);
+		return c.json<ErrorResponse>(INTERNAL_SERVER_ERROR, 500);
 	});
 
 	return app;
