@@ -1,4 +1,9 @@
-import type { ErrorResponse, HealthResponse } from "@chat-app/shared";
+import type { ProfileSummary } from "@chat-app/db";
+import type {
+	ErrorResponse,
+	HealthResponse,
+	MeResponse,
+} from "@chat-app/shared";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AuthService, AuthUser } from "./auth";
@@ -11,6 +16,8 @@ export type AppDeps = {
 	pingDb: () => Promise<boolean>;
 	/** 認証（/api/auth/* の処理と、ログインしているかの確認） */
 	auth: AuthService;
+	/** アカウントのデフォルトのプロフィールを返す。無ければ undefined */
+	findDefaultProfile: (userId: string) => Promise<ProfileSummary | undefined>;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -21,7 +28,12 @@ export type AppDeps = {
  */
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
 
-export function createApp({ pingDb, auth, webOrigin }: AppDeps) {
+export function createApp({
+	pingDb,
+	auth,
+	findDefaultProfile,
+	webOrigin,
+}: AppDeps) {
 	const app = new Hono<AppEnv>();
 
 	// web（別の origin）から cookie 付きで呼べるようにする。プリフライト（OPTIONS）はここで返る
@@ -52,6 +64,22 @@ export function createApp({ pingDb, auth, webOrigin }: AppDeps) {
 	});
 
 	app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+	app.get("/api/me", async (c) => {
+		const user = c.get("user");
+		const defaultProfile = await findDefaultProfile(user.id);
+		if (!defaultProfile) {
+			// サインアップの trigger で必ず作るので、起きないはず
+			throw new Error(
+				`デフォルトのプロフィールがありません（user: ${user.id}）`,
+			);
+		}
+		return c.json<MeResponse>({
+			id: user.id,
+			email: user.email,
+			defaultProfile,
+		});
+	});
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {

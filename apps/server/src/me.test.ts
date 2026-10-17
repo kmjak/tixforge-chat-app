@@ -136,3 +136,53 @@ describe("エラーの共通形式", () => {
 		expect(log).toHaveBeenCalled();
 	});
 });
+
+describe("GET /api/me", () => {
+	it("未ログインで GET /api/me を呼ぶと 401 が返る", async () => {
+		const res = await t.request("GET", "/api/me");
+
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual(UNAUTHORIZED);
+	});
+
+	it("ログイン済みで GET /api/me を呼ぶと、アカウントの id・メールアドレス・デフォルトプロフィールが返る", async () => {
+		const me = await signUpAndLogin(" Taro ", "me@example.com");
+		// 別のアカウントの情報が混ざらないことも確かめる
+		await signUpAndLogin("Hanako", "hanako-me@example.com");
+
+		const res = await t.request("GET", "/api/me", { cookie: me.cookie });
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			id: me.userId,
+			email: "me@example.com",
+			defaultProfile: { id: expect.any(String), name: "Taro", bio: "" },
+		});
+	});
+
+	it("ログアウトした後のセッションで呼ぶと 401 が返る", async () => {
+		const { cookie } = await signUpAndLogin("Out", "signout-me@example.com");
+		const signOut = await t.request("POST", "/api/auth/sign-out", { cookie });
+		expect(signOut.status).toBe(200);
+
+		const res = await t.request("GET", "/api/me", { cookie });
+
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual(UNAUTHORIZED);
+	});
+
+	it("期限切れのセッションで呼ぶと 401 が返る", async () => {
+		const { cookie, userId } = await signUpAndLogin(
+			"Expired",
+			"expired-me@example.com",
+		);
+		await t.db.$client.query(
+			"UPDATE session SET expires_at = now() - interval '1 minute' WHERE user_id = $1",
+			[userId],
+		);
+
+		const res = await t.request("GET", "/api/me", { cookie });
+
+		expect(res.status).toBe(401);
+	});
+});

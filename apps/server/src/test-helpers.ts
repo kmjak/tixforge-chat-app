@@ -1,4 +1,5 @@
 // テストだけで使う補助関数。本物のマイグレーションを当てた PGlite の DB で app を組み立てる
+import { findDefaultProfile } from "@chat-app/db";
 import { createTestDb, type TestDb } from "@chat-app/db/testing";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
@@ -32,6 +33,7 @@ export async function setupTestApp(): Promise<TestApp> {
 			webOrigin: WEB_ORIGIN,
 			rateLimit: false,
 		}),
+		findDefaultProfile: (userId) => findDefaultProfile(db, userId),
 		webOrigin: WEB_ORIGIN,
 	});
 

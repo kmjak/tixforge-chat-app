@@ -7,6 +7,7 @@ const deps = {
 		handler: async () => new Response(null, { status: 404 }),
 		getSession: async () => null,
 	},
+	findDefaultProfile: async () => undefined,
 	webOrigin: "http://localhost:3000",
 };
 
