@@ -3,7 +3,10 @@ import { createApp } from "./app";
 
 /** /health のテストでは認証を使わない */
 const deps = {
-	auth: { handler: async () => new Response(null, { status: 404 }) },
+	auth: {
+		handler: async () => new Response(null, { status: 404 }),
+		getSession: async () => null,
+	},
 	webOrigin: "http://localhost:3000",
 };
 
