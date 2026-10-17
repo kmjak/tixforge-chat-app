@@ -6,6 +6,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 /
 ├── health                        GET   ヘルスチェック          uri/get-health.md
 └── api
+    ├── me                        GET   ログイン中のアカウント  uri/get-api-me.md
     └── auth                      （Better Auth が使う）
         ├── sign-up
         │   └── email             POST  サインアップ            uri/post-api-auth-sign-up-email.md
@@ -16,6 +17,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 ```
 
 - [`GET /health`](uri/get-health.md) — ヘルスチェック
+- [`GET /api/me`](uri/get-api-me.md) — ログイン中のアカウント
 - [`POST /api/auth/sign-up/email`](uri/post-api-auth-sign-up-email.md) — サインアップ
 - [`POST /api/auth/sign-in/email`](uri/post-api-auth-sign-in-email.md) — サインイン
 - [`POST /api/auth/sign-out`](uri/post-api-auth-sign-out.md) — サインアウト
@@ -86,6 +88,36 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 ```json
 { "code": "UNAUTHORIZED", "message": "Unauthorized" }
 ```
+
+どの API にも共通で、次の 3 つはこの形で返す（個々の API の詳細のファイルには書かない）。
+
+| ステータス | `code` | 起きるとき |
+|------------|--------|-----------|
+| 401 | `UNAUTHORIZED` | ログインが必要な API を、有効なセッション無しで呼んだ（下の「ログインの確認」） |
+| 404 | `NOT_FOUND` | 存在しない API を呼んだ（ログインが必要なパスでは、未ログインなら 401 が先に返る） |
+| 500 | `INTERNAL_SERVER_ERROR` | 処理の中で想定外のエラーが起きた。理由はサーバーのログにだけ出し、応答には含めない |
+
+API の処理が意図して 4xx を返すとき（入力の検査で 400 にする、など）は、そのステータスのまま、この形で返す（server は Hono の `HTTPException` の 4xx をそのまま返す）。API ごとの `code` は、各 API の詳細のファイルに書く。`code` を特に決めずに返したときは、ステータスに対応する次の名前になる（一覧に無いステータスは `HTTP_<ステータス>`）。
+
+| ステータス | `code` |
+|------------|--------|
+| 400 | `BAD_REQUEST` |
+| 401 | `UNAUTHORIZED` |
+| 403 | `FORBIDDEN` |
+| 404 | `NOT_FOUND` |
+| 405 | `METHOD_NOT_ALLOWED` |
+| 409 | `CONFLICT` |
+| 413 | `PAYLOAD_TOO_LARGE` |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` |
+| 422 | `UNPROCESSABLE_ENTITY` |
+| 429 | `TOO_MANY_REQUESTS` |
+
+## ログインの確認
+- `/api` の下の API は、既定でログインが必要。server は、`/api/*` へのリクエストのたびに、セッションの cookie から Better Auth のセッションを確かめる（GT-000007）。
+- ログイン無しで使える API は、server のコードの一覧（`apps/server/src/app.ts` の `PUBLIC_API_PREFIXES`）に明示したものだけ。今は `/api/auth/*`（Better Auth）だけで、`/api` の外の `GET /health` ももともと対象外。新しい API は、何もしなければログインが必要になる。
+- セッションが無い・無効・サインアウト済み・期限切れのときは 401（`UNAUTHORIZED`）を返す。存在しないパスでも、未ログインなら 401 を返す（API があるかどうかを知らせない）。
+- この確認では、セッションの期限を延ばさない。期限の延長は、web が画面を開くたびに呼ぶ [`GET /api/auth/get-session`](uri/get-api-auth-get-session.md) が行う。
+- ログイン済みなら、API の処理の中で呼び出したアカウント（id・メールアドレス）を取り出せる。
 
 ## セッションの渡し方
 - ログインのセッションは、Better Auth のセッションの cookie で渡す。サインアップ・サインインの成功時に server が設定し、サインアウトで消す。
