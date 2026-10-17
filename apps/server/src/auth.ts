@@ -23,7 +23,16 @@ export type AuthOptions = {
 	rateLimit?: boolean;
 };
 
-export type Auth = ReturnType<typeof createAuth>;
+/** ログインしているアカウント（API のハンドラで使う分だけ） */
+export type AuthUser = { id: string; email: string };
+
+/** app が使う認証の機能。テストで差し替えられるように、Better Auth を直接は渡さない */
+export type AuthService = {
+	/** /api/auth/* のリクエストを Better Auth に渡す */
+	handler: (request: Request) => Promise<Response>;
+	/** リクエストの cookie からログインしているアカウントを返す。未ログイン・無効・期限切れなら null */
+	getSession: (headers: Headers) => Promise<{ user: AuthUser } | null>;
+};
 
 /** name を受け取る経路と、パスワードを受け取る経路（とその body のフィールド名） */
 const NAME_PATHS = new Set(["/sign-up/email", "/update-user"]);
@@ -85,15 +94,15 @@ const validateUserInput = createAuthMiddleware(async (ctx) => {
 	}
 });
 
-/** Better Auth のインスタンスを作る（/api/auth/* を扱う） */
+/** Better Auth を組み立て、app が使う認証の機能を返す */
 export function createAuth({
 	db,
 	secret,
 	baseURL,
 	webOrigin,
 	rateLimit = true,
-}: AuthOptions) {
-	return betterAuth({
+}: AuthOptions): AuthService {
+	const auth = betterAuth({
 		secret,
 		baseURL,
 		basePath: "/api/auth",
@@ -117,4 +126,19 @@ export function createAuth({
 			database: { generateId: "uuid" },
 		},
 	});
+
+	return {
+		handler: (request) => auth.handler(request),
+		getSession: async (headers) => {
+			// 期限の延長はしない。auth.api から延ばすと、新しい cookie が応答に載らずに捨てられるため
+			// （延長は web が画面を開くたびに呼ぶ /api/auth/get-session が行う）
+			const result = await auth.api.getSession({
+				headers,
+				query: { disableRefresh: true },
+			});
+			return result
+				? { user: { id: result.user.id, email: result.user.email } }
+				: null;
+		},
+	};
 }
