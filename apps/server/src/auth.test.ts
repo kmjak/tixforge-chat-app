@@ -1,69 +1,32 @@
-import { createTestDb, type TestDb } from "@chat-app/db/testing";
-import { createApp } from "./app";
-import { createAuth } from "./auth";
+import {
+	cookieFrom,
+	PASSWORD,
+	setupTestApp,
+	type TestApp,
+	WEB_ORIGIN,
+} from "./test-helpers";
 
-const WEB_ORIGIN = "http://localhost:3000";
-const PASSWORD = "Passw0rd!";
-
-let db: TestDb;
-let app: ReturnType<typeof createApp>;
+let t: TestApp;
 
 beforeAll(async () => {
-	db = await createTestDb();
-	app = createApp({
-		pingDb: async () => true,
-		auth: createAuth({
-			db,
-			secret: "test-secret-test-secret-test-secret",
-			baseURL: "http://localhost:3001",
-			webOrigin: WEB_ORIGIN,
-			rateLimit: false,
-		}),
-		webOrigin: WEB_ORIGIN,
-	});
+	t = await setupTestApp();
 });
 
 afterAll(async () => {
-	await db.$client.close();
+	await t.close();
 });
 
-/** web から呼んだときと同じく、Origin と（あれば）cookie を付けて API を呼ぶ */
-function request(
-	method: "GET" | "POST",
-	path: string,
-	{ body, cookie }: { body?: unknown; cookie?: string } = {},
-) {
-	const headers = new Headers({ Origin: WEB_ORIGIN });
-	if (body !== undefined) {
-		headers.set("Content-Type", "application/json");
-	}
-	if (cookie) {
-		headers.set("Cookie", cookie);
-	}
-	return app.request(path, {
-		method,
-		headers,
-		body: body === undefined ? undefined : JSON.stringify(body),
-	});
+function request(...args: Parameters<TestApp["request"]>) {
+	return t.request(...args);
 }
 
-/** Set-Cookie から、次のリクエストに付ける Cookie ヘッダを作る */
-function cookieFrom(res: Response): string {
-	return res.headers
-		.getSetCookie()
-		.map((c) => c.split(";")[0])
-		.join("; ");
-}
-
-function signUp(name: string, email: string, password = PASSWORD) {
-	return request("POST", "/api/auth/sign-up/email", {
-		body: { name, email, password },
-	});
+function signUp(...args: Parameters<TestApp["signUp"]>) {
+	return t.signUp(...args);
 }
 
 // db と server で drizzle-orm の実体が分かれる（peer の違い）ので、テストの確認は SQL で行う
 async function findUser(email: string) {
-	const { rows } = await db.$client.query<{ id: string; name: string }>(
+	const { rows } = await t.db.$client.query<{ id: string; name: string }>(
 		'SELECT id, name FROM "user" WHERE email = $1',
 		[email],
 	);
@@ -71,7 +34,7 @@ async function findUser(email: string) {
 }
 
 async function countSessions(userId: string) {
-	const { rows } = await db.$client.query<{ n: number }>(
+	const { rows } = await t.db.$client.query<{ n: number }>(
 		"SELECT count(*)::int AS n FROM session WHERE user_id = $1",
 		[userId],
 	);
@@ -156,7 +119,7 @@ describe("サインアップ", () => {
 			throw new Error("user が無い");
 		}
 
-		const { rows } = await db.$client.query(
+		const { rows } = await t.db.$client.query(
 			"SELECT name, bio, is_default FROM profiles WHERE user_id = $1",
 			[user.id],
 		);
