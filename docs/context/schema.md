@@ -121,11 +121,11 @@ erDiagram
 ## テーブルの一覧
 | テーブル | 内容 | 状態 |
 |----------|------|------|
-| [`user`](schema/user.md) | アカウント（Better Auth） | 予定（GT-000003） |
-| [`session`](schema/session.md) | ログインのセッション（Better Auth） | 予定（GT-000003） |
-| [`account`](schema/account.md) | ログインの方法とパスワード（Better Auth） | 予定（GT-000003） |
-| [`verification`](schema/verification.md) | 確認用のトークン（Better Auth。MVP では使わない） | 予定（GT-000003） |
-| [`profiles`](schema/profiles.md) | プロフィール | 予定（GT-000003） |
+| [`user`](schema/user.md) | アカウント（Better Auth） | 実装済み（GT-000003） |
+| [`session`](schema/session.md) | ログインのセッション（Better Auth） | 実装済み（GT-000003） |
+| [`account`](schema/account.md) | ログインの方法とパスワード（Better Auth） | 実装済み（GT-000003） |
+| [`verification`](schema/verification.md) | 確認用のトークン（Better Auth。MVP では使わない） | 実装済み（GT-000003） |
+| [`profiles`](schema/profiles.md) | プロフィール | 実装済み（GT-000003） |
 | [`servers`](schema/servers.md) | サーバー | 予定（GT-000009） |
 | [`server_members`](schema/server_members.md) | サーバーのメンバーと、サーバーで使うプロフィール | 予定（GT-000009） |
 | [`server_invites`](schema/server_invites.md) | サーバーの招待リンク | 予定（GT-000009） |
