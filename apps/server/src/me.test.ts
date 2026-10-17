@@ -53,14 +53,6 @@ describe("除外していない新しい API は、何もしなくてもログ�
 		expect(await res.json()).toEqual({ id: userId });
 	});
 
-	it("壊れた cookie なら 401 を返す", async () => {
-		const res = await t.request("GET", "/api/test/whoami", {
-			cookie: "better-auth.session_token=broken.value",
-		});
-
-		expect(res.status).toBe(401);
-	});
-
 	it("存在しない API も、未ログインなら 401 を返す（存在するかを知らせない）", async () => {
 		const res = await t.request("GET", "/api/does-not-exist");
 
@@ -140,6 +132,15 @@ describe("エラーの共通形式", () => {
 describe("GET /api/me", () => {
 	it("未ログインで GET /api/me を呼ぶと 401 が返る", async () => {
 		const res = await t.request("GET", "/api/me");
+
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual(UNAUTHORIZED);
+	});
+
+	it("壊れた cookie で GET /api/me を呼ぶと 401 が返る", async () => {
+		const res = await t.request("GET", "/api/me", {
+			cookie: "better-auth.session_token=broken.value",
+		});
 
 		expect(res.status).toBe(401);
 		expect(await res.json()).toEqual(UNAUTHORIZED);
