@@ -62,10 +62,11 @@ export type ProfileService = {
 		userId: string,
 		input: { name: string; bio: string },
 	) => Promise<CreateProfileResult>;
+	/** name・bio を変え、isDefault: true ならデフォルトにする。すべて 1 つの transaction で行う */
 	update: (
 		userId: string,
 		profileId: string,
-		input: { name?: string; bio?: string },
+		input: { name?: string; bio?: string; isDefault?: true },
 	) => Promise<Profile | undefined>;
 	setDefault: (
 		userId: string,
@@ -144,7 +145,7 @@ export function createProfileService(
 		usageSources = PROFILE_USAGE_SOURCES,
 	}: { usageSources?: ProfileUsageSource[] } = {},
 ): ProfileService {
-	return {
+	const service: ProfileService = {
 		findDefault: (userId) => findDefaultProfile(db, userId),
 
 		list: (userId) =>
@@ -181,44 +182,43 @@ export function createProfileService(
 				return { ok: true, profile } as const;
 			}),
 
-		update: async (userId, profileId, { name, bio }) => {
-			const own = await findOwn(db, userId, profileId);
-			if (!own || (name === undefined && bio === undefined)) {
-				return own;
-			}
-			const [updated] = await db
-				.update(profiles)
-				.set({
-					...(name === undefined ? {} : { name }),
-					...(bio === undefined ? {} : { bio }),
-					updatedAt: sql`now()`,
-				})
-				.where(and(eq(profiles.id, profileId), eq(profiles.userId, userId)))
-				.returning(columns);
-			return updated;
-		},
+		update: (userId, profileId, { name, bio, isDefault }) =>
+			db.transaction(async (tx) => {
+				if (isDefault) {
+					await lockUser(tx, userId);
+				}
+				const own = await findOwn(tx, userId, profileId);
+				if (!own) {
+					return undefined;
+				}
+				if (isDefault && !own.isDefault) {
+					// デフォルトの一意インデックスは遅延できないので、先に今のデフォルトを外す
+					await tx
+						.update(profiles)
+						.set({ isDefault: false, updatedAt: sql`now()` })
+						.where(
+							and(eq(profiles.userId, userId), eq(profiles.isDefault, true)),
+						);
+					await tx
+						.update(profiles)
+						.set({ isDefault: true, updatedAt: sql`now()` })
+						.where(eq(profiles.id, profileId));
+				}
+				if (name !== undefined || bio !== undefined) {
+					await tx
+						.update(profiles)
+						.set({
+							...(name === undefined ? {} : { name }),
+							...(bio === undefined ? {} : { bio }),
+							updatedAt: sql`now()`,
+						})
+						.where(eq(profiles.id, profileId));
+				}
+				return findOwn(tx, userId, profileId);
+			}),
 
 		setDefault: (userId, profileId) =>
-			db.transaction(async (tx) => {
-				await lockUser(tx, userId);
-				const own = await findOwn(tx, userId, profileId);
-				if (!own || own.isDefault) {
-					return own;
-				}
-				// デフォルトの一意インデックスは遅延できないので、先に今のデフォルトを外す
-				await tx
-					.update(profiles)
-					.set({ isDefault: false, updatedAt: sql`now()` })
-					.where(
-						and(eq(profiles.userId, userId), eq(profiles.isDefault, true)),
-					);
-				const [updated] = await tx
-					.update(profiles)
-					.set({ isDefault: true, updatedAt: sql`now()` })
-					.where(eq(profiles.id, profileId))
-					.returning(columns);
-				return updated;
-			}),
+			service.update(userId, profileId, { isDefault: true }),
 
 		remove: (userId, profileId) =>
 			db.transaction(async (tx) => {
@@ -242,4 +242,5 @@ export function createProfileService(
 			return own ? findUsages(db, usageSources, profileId) : undefined;
 		},
 	};
+	return service;
 }

@@ -96,12 +96,12 @@ export function registerProfileRoutes(
 			throw new ApiError(400, "BAD_REQUEST", "isDefault can only be true");
 		}
 
-		const userId = c.get("user").id;
-		const profileId = c.req.param("profileId");
-		let profile = await profiles.update(userId, profileId, { name, bio });
-		if (profile && body.isDefault === true) {
-			profile = await profiles.setDefault(userId, profileId);
-		}
+		// 編集とデフォルトへの切り替えは、1 つの transaction で行う（途中で失敗したら両方とも戻る）
+		const profile = await profiles.update(
+			c.get("user").id,
+			c.req.param("profileId"),
+			{ name, bio, isDefault: body.isDefault === true ? true : undefined },
+		);
 		if (!profile) {
 			throw notFound();
 		}

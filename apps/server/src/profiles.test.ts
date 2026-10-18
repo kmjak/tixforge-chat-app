@@ -292,6 +292,26 @@ describe("デフォルトの切り替え", () => {
 		});
 
 		expect(res.status).toBe(400);
+		expect(await res.json()).toMatchObject({ code: "BAD_REQUEST" });
+		expect(await countDefaults(me)).toBe(1);
+	});
+
+	it("name・bio とデフォルトへの切り替えを一緒に送ると、両方とも変わる", async () => {
+		const me = await login("First");
+		const second = await createOk(me, "Second");
+
+		const res = await t.request("PATCH", `/api/profiles/${second.id}`, {
+			cookie: me,
+			body: { name: "Main", bio: "main", isDefault: true },
+		});
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			id: second.id,
+			name: "Main",
+			bio: "main",
+			isDefault: true,
+		});
 		expect(await countDefaults(me)).toBe(1);
 	});
 });

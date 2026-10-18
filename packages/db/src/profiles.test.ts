@@ -180,6 +180,32 @@ describe("createProfileService", () => {
 		expect(await countDefaults(userId)).toBe(1);
 	});
 
+	it("編集とデフォルトへの切り替えは 1 つの transaction で、途中で失敗したら両方とも戻る", async () => {
+		const userId = await insertUser("First");
+		const s = service();
+		const created = await s.create(userId, { name: "Second", bio: "" });
+		if (!created.ok) throw new Error("作れない");
+
+		// name・bio と isDefault を一緒に変えられる
+		const both = await s.update(userId, created.profile.id, {
+			name: "Renamed",
+			isDefault: true,
+		});
+		expect(both).toMatchObject({ name: "Renamed", isDefault: true });
+		expect(await countDefaults(userId)).toBe(1);
+
+		// 切り替えの後の name の更新が CHECK に違反すると、切り替えも戻る
+		const [, first] = await s.list(userId);
+		if (!first) throw new Error("準備できない");
+		await expect(
+			s.update(userId, first.id, { name: "あ".repeat(33), isDefault: true }),
+		).rejects.toThrow();
+		expect(await findDefaultProfile(db, userId)).toMatchObject({
+			name: "Renamed",
+		});
+		expect(await countDefaults(userId)).toBe(1);
+	});
+
 	it("削除：デフォルトは消せず、そうでなければ消せる", async () => {
 		const userId = await insertUser();
 		const s = service();
