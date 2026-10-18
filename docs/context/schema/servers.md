@@ -23,7 +23,7 @@
 - アプリが守る
   - オーナーは、そのサーバーのメンバー（[`server_members`](server_members.md) で `left_at` が null）である。作るときに、オーナーをメンバーとして同じ transaction で加える
   - 作るときに、既定のチャンネル `一般`（[`channels`](channels.md) の `is_default = true`）を同じ transaction で作る（GT-000011 から。それより前に作られたサーバーには、マイグレーション `0005_default_channels_for_existing_servers` で作った）
-  - オーナーの譲渡は `owner_user_id` を書き換える。相手はそのサーバーのメンバーに限る（予定（GT-000010））
+  - オーナーの譲渡は、`servers` の行をロックしてから `owner_user_id` を書き換える（[オーナーだけができる操作](../schema.md#命名と型の規則)と順番をそろえるため）。相手はそのサーバーのメンバーに限る（予定（GT-000010））
   - 削除は論理削除（予定（GT-000010））。同じ transaction で、全メンバーを退出の扱い（`server_members.left_at`・`left_display_name` を入れる）にする。プロフィールの使用先から外し、プロフィールを削除できるようにするため。削除したサーバーは、誰も取得できず、その招待リンクでも参加できない
 
 ### 関係
