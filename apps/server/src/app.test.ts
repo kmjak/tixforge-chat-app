@@ -1,3 +1,4 @@
+import type { ProfileService } from "@chat-app/db";
 import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
@@ -9,7 +10,16 @@ const deps = {
 		handler: async () => new Response(null, { status: 404 }),
 		getSession: async () => null,
 	},
-	findDefaultProfile: async () => undefined,
+	profiles: {
+		findDefault: async () => undefined,
+		list: async () => [],
+		get: async () => undefined,
+		create: async () => ({ ok: false, reason: "limit" }),
+		update: async () => undefined,
+		setDefault: async () => undefined,
+		remove: async () => ({ ok: false, reason: "not-found" }),
+		listUsages: async () => undefined,
+	} satisfies ProfileService,
 	webOrigin: "http://localhost:3000",
 };
 

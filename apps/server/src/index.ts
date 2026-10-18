@@ -1,4 +1,4 @@
-import { createDb, findDefaultProfile, pingDb } from "@chat-app/db";
+import { createDb, createProfileService, pingDb } from "@chat-app/db";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
@@ -17,7 +17,7 @@ const app = createApp({
 		baseURL: env.betterAuthUrl,
 		webOrigin: env.webOrigin,
 	}),
-	findDefaultProfile: (userId) => findDefaultProfile(db, userId),
+	profiles: createProfileService(db),
 	webOrigin: env.webOrigin,
 });
 

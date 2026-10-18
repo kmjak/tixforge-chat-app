@@ -1,5 +1,5 @@
 // テストだけで使う補助関数。本物のマイグレーションを当てた PGlite の DB で app を組み立てる
-import { findDefaultProfile } from "@chat-app/db";
+import { createProfileService, type ProfileUsageSource } from "@chat-app/db";
 import { createTestDb, type TestDb } from "@chat-app/db/testing";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
@@ -21,8 +21,16 @@ export type TestApp = {
 	close: () => Promise<void>;
 };
 
-/** テスト用の DB と app を作る。回数の制限は、同じ相手から何度も呼ぶので無効にする */
-export async function setupTestApp(): Promise<TestApp> {
+/**
+ * テスト用の DB と app を作る。回数の制限は、同じ相手から何度も呼ぶので無効にする。
+ * 使用先の source は、指定しなければ空（割り当てが無い状態）
+ */
+export async function setupTestApp({
+	usageSources = [],
+}: {
+	/** プロフィールの使用先の source（割り当ての代わりにテストで差し込む） */
+	usageSources?: ProfileUsageSource[];
+} = {}): Promise<TestApp> {
 	const db = await createTestDb();
 	const app = createApp({
 		pingDb: async () => true,
@@ -33,7 +41,7 @@ export async function setupTestApp(): Promise<TestApp> {
 			webOrigin: WEB_ORIGIN,
 			rateLimit: false,
 		}),
-		findDefaultProfile: (userId) => findDefaultProfile(db, userId),
+		profiles: createProfileService(db, { usageSources }),
 		webOrigin: WEB_ORIGIN,
 	});
 

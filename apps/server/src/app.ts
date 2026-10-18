@@ -1,4 +1,4 @@
-import type { ProfileSummary } from "@chat-app/db";
+import type { ProfileService } from "@chat-app/db";
 import type {
 	ErrorResponse,
 	HealthResponse,
@@ -10,6 +10,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
 import { ApiError } from "./errors";
+import { registerProfileRoutes } from "./profiles";
 
 /** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
 export type AppEnv = { Variables: { user: AuthUser } };
@@ -19,8 +20,8 @@ export type AppDeps = {
 	pingDb: () => Promise<boolean>;
 	/** 認証（/api/auth/* の処理と、ログインしているかの確認） */
 	auth: AuthService;
-	/** アカウントのデフォルトのプロフィールを返す。無ければ undefined */
-	findDefaultProfile: (userId: string) => Promise<ProfileSummary | undefined>;
+	/** 自分のプロフィールの操作 */
+	profiles: ProfileService;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -50,12 +51,7 @@ const INTERNAL_SERVER_ERROR: ErrorResponse = {
 	message: "Internal Server Error",
 };
 
-export function createApp({
-	pingDb,
-	auth,
-	findDefaultProfile,
-	webOrigin,
-}: AppDeps) {
+export function createApp({ pingDb, auth, profiles, webOrigin }: AppDeps) {
 	const app = new Hono<AppEnv>();
 
 	// web（別の origin）から cookie 付きで呼べるようにする。プリフライト（OPTIONS）はここで返る
@@ -89,7 +85,7 @@ export function createApp({
 
 	app.get("/api/me", async (c) => {
 		const user = c.get("user");
-		const defaultProfile = await findDefaultProfile(user.id);
+		const defaultProfile = await profiles.findDefault(user.id);
 		if (!defaultProfile) {
 			// サインアップの trigger で必ず作るので、起きないはず
 			throw new Error(
@@ -102,6 +98,8 @@ export function createApp({
 			defaultProfile,
 		});
 	});
+
+	registerProfileRoutes(app, profiles);
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {
