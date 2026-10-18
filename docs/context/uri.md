@@ -13,6 +13,15 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
     │       │                     PATCH プロフィールの編集      uri/patch-api-profiles-{profileId}.md
     │       │                     DELETE プロフィールの削除     uri/delete-api-profiles-{profileId}.md
     │       └── usages            GET   プロフィールの使用先    uri/get-api-profiles-{profileId}-usages.md
+    ├── servers                   GET   サーバーの一覧          uri/get-api-servers.md
+    │   │                         POST  サーバーの作成          uri/post-api-servers.md
+    │   └── {serverId}            GET   サーバーの取得          uri/get-api-servers-{serverId}.md
+    │       ├── members           GET   メンバーの一覧          uri/get-api-servers-{serverId}-members.md
+    │       │   └── me            PATCH 使うプロフィールの変更  uri/patch-api-servers-{serverId}-members-me.md
+    │       └── invites           POST  招待リンクの作成        uri/post-api-servers-{serverId}-invites.md
+    ├── invites
+    │   └── {token}               GET   招待の確認              uri/get-api-invites-{token}.md
+    │       └── join              POST  招待での参加            uri/post-api-invites-{token}-join.md
     └── auth                      （Better Auth が使う）
         ├── sign-up
         │   └── email             POST  サインアップ            uri/post-api-auth-sign-up-email.md
@@ -30,6 +39,14 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 - [`PATCH /api/profiles/{profileId}`](uri/patch-api-profiles-{profileId}.md) — プロフィールの編集・デフォルトへの切り替え
 - [`DELETE /api/profiles/{profileId}`](uri/delete-api-profiles-{profileId}.md) — プロフィールの削除
 - [`GET /api/profiles/{profileId}/usages`](uri/get-api-profiles-{profileId}-usages.md) — プロフィールの使用先
+- [`GET /api/servers`](uri/get-api-servers.md) — サーバーの一覧
+- [`POST /api/servers`](uri/post-api-servers.md) — サーバーの作成
+- [`GET /api/servers/{serverId}`](uri/get-api-servers-{serverId}.md) — サーバーの取得
+- [`GET /api/servers/{serverId}/members`](uri/get-api-servers-{serverId}-members.md) — メンバーの一覧
+- [`PATCH /api/servers/{serverId}/members/me`](uri/patch-api-servers-{serverId}-members-me.md) — 使うプロフィールの変更
+- [`POST /api/servers/{serverId}/invites`](uri/post-api-servers-{serverId}-invites.md) — 招待リンクの作成
+- [`GET /api/invites/{token}`](uri/get-api-invites-{token}.md) — 招待の確認
+- [`POST /api/invites/{token}/join`](uri/post-api-invites-{token}-join.md) — 招待での参加
 - [`POST /api/auth/sign-up/email`](uri/post-api-auth-sign-up-email.md) — サインアップ
 - [`POST /api/auth/sign-in/email`](uri/post-api-auth-sign-in-email.md) — サインイン
 - [`POST /api/auth/sign-out`](uri/post-api-auth-sign-out.md) — サインアウト
