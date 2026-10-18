@@ -5,6 +5,7 @@ import type {
 	MeResponse,
 } from "@chat-app/shared";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -46,6 +47,9 @@ const ERROR_CODES: Record<number, string> = {
 	429: "TOO_MANY_REQUESTS",
 };
 
+/** API のリクエストの本文の大きさの上限。超えたら 413 PAYLOAD_TOO_LARGE（読み込む前に断る） */
+const MAX_BODY_BYTES = 100 * 1024;
+
 const INTERNAL_SERVER_ERROR: ErrorResponse = {
 	code: "INTERNAL_SERVER_ERROR",
 	message: "Internal Server Error",
@@ -62,6 +66,20 @@ export function createApp({ pingDb, auth, profiles, webOrigin }: AppDeps) {
 			credentials: true,
 			allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 			allowHeaders: ["Content-Type"],
+		}),
+	);
+
+	app.use(
+		"/api/*",
+		bodyLimit({
+			maxSize: MAX_BODY_BYTES,
+			onError: () => {
+				throw new ApiError(
+					413,
+					"PAYLOAD_TOO_LARGE",
+					"Request body is too large",
+				);
+			},
 		}),
 	);
 
