@@ -43,6 +43,7 @@ export {
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
+	MAX_PROFILES,
 	NAME_MAX_LENGTH,
 	normalizeName,
 	PASSWORD_MAX_LENGTH,

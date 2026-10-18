@@ -5,6 +5,9 @@ export const PASSWORD_MAX_LENGTH = 128;
 /** 名前の長さの上限（前後の空白を除いて数える。プロフィールの name と同じ） */
 export const NAME_MAX_LENGTH = 32;
 
+/** 1 つのアカウントが持てるプロフィールの数（デフォルトを含む） */
+export const MAX_PROFILES = 5;
+
 /** プロフィールの自己紹介（bio）の長さの上限 */
 export const BIO_MAX_LENGTH = 190;
 

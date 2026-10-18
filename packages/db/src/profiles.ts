@@ -1,3 +1,4 @@
+import { MAX_PROFILES } from "@chat-app/shared";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type * as schema from "./schema";
@@ -12,8 +13,7 @@ export type ProfileSummary = { id: string; name: string; bio: string };
 /** 本人に見せるプロフィール（デフォルトかどうかを含む） */
 export type Profile = ProfileSummary & { isDefault: boolean };
 
-/** 1 つのアカウントが持てるプロフィールの数（デフォルトを含む） */
-export const MAX_PROFILES = 5;
+export { MAX_PROFILES };
 
 /** プロフィールの割り当て先の種類（docs/context/schema.md「プロフィールの割り当て」） */
 export type ProfileUsageType = "server" | "friend" | "groupDm";
