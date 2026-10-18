@@ -16,6 +16,11 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
     ├── servers                   GET   サーバーの一覧          uri/get-api-servers.md
     │   │                         POST  サーバーの作成          uri/post-api-servers.md
     │   └── {serverId}            GET   サーバーの取得          uri/get-api-servers-{serverId}.md
+    │       ├── channels          GET   チャンネルの一覧        uri/get-api-servers-{serverId}-channels.md
+    │       │   │                 POST  チャンネルの作成        uri/post-api-servers-{serverId}-channels.md
+    │       │   └── {channelId}   GET   チャンネルの取得        uri/get-api-servers-{serverId}-channels-{channelId}.md
+    │       │                     PATCH チャンネル名の変更      uri/patch-api-servers-{serverId}-channels-{channelId}.md
+    │       │                     DELETE チャンネルの削除       uri/delete-api-servers-{serverId}-channels-{channelId}.md
     │       ├── members           GET   メンバーの一覧          uri/get-api-servers-{serverId}-members.md
     │       │   └── me            PATCH 使うプロフィールの変更  uri/patch-api-servers-{serverId}-members-me.md
     │       └── invites           POST  招待リンクの作成        uri/post-api-servers-{serverId}-invites.md
@@ -42,6 +47,11 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 - [`GET /api/servers`](uri/get-api-servers.md) — サーバーの一覧
 - [`POST /api/servers`](uri/post-api-servers.md) — サーバーの作成
 - [`GET /api/servers/{serverId}`](uri/get-api-servers-{serverId}.md) — サーバーの取得
+- [`GET /api/servers/{serverId}/channels`](uri/get-api-servers-{serverId}-channels.md) — チャンネルの一覧
+- [`POST /api/servers/{serverId}/channels`](uri/post-api-servers-{serverId}-channels.md) — チャンネルの作成
+- [`GET /api/servers/{serverId}/channels/{channelId}`](uri/get-api-servers-{serverId}-channels-{channelId}.md) — チャンネルの取得
+- [`PATCH /api/servers/{serverId}/channels/{channelId}`](uri/patch-api-servers-{serverId}-channels-{channelId}.md) — チャンネル名の変更
+- [`DELETE /api/servers/{serverId}/channels/{channelId}`](uri/delete-api-servers-{serverId}-channels-{channelId}.md) — チャンネルの削除
 - [`GET /api/servers/{serverId}/members`](uri/get-api-servers-{serverId}-members.md) — メンバーの一覧
 - [`PATCH /api/servers/{serverId}/members/me`](uri/patch-api-servers-{serverId}-members-me.md) — 使うプロフィールの変更
 - [`POST /api/servers/{serverId}/invites`](uri/post-api-servers-{serverId}-invites.md) — 招待リンクの作成
