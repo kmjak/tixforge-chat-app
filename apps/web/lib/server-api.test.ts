@@ -1,4 +1,4 @@
-import { serverGet } from "./server-api";
+import { resolveServerGet, serverGet } from "./server-api";
 
 const SERVER_URL = "http://localhost:3001";
 
@@ -34,6 +34,38 @@ describe("serverGet", () => {
 		).resolves.toEqual({
 			ok: false,
 			status: 404,
+		});
+	});
+});
+
+describe("resolveServerGet", () => {
+	it("成功なら本文を返す", () => {
+		expect(resolveServerGet({ ok: true, data: { a: 1 } }, "/profiles")).toEqual(
+			{
+				type: "data",
+				data: { a: 1 },
+			},
+		);
+	});
+
+	it("401（セッションが切れた）なら、今のパスに戻るサインインへリダイレクトする", () => {
+		expect(
+			resolveServerGet({ ok: false, status: 401 }, "/profiles/p1"),
+		).toEqual({ type: "redirect", to: "/sign-in?redirect=%2Fprofiles%2Fp1" });
+	});
+
+	it("404 なら 404 の画面にする", () => {
+		expect(
+			resolveServerGet({ ok: false, status: 404 }, "/profiles/p1"),
+		).toEqual({
+			type: "not-found",
+		});
+	});
+
+	it("それ以外の失敗はエラーにする", () => {
+		expect(resolveServerGet({ ok: false, status: 500 }, "/profiles")).toEqual({
+			type: "error",
+			status: 500,
 		});
 	});
 });

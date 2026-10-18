@@ -1,16 +1,13 @@
 import { MAX_PROFILES, type ProfilesResponse } from "@chat-app/shared";
 import Link from "next/link";
-import { getFromServer } from "../../lib/get-from-server";
+import { loadFromServer } from "../../lib/get-from-server";
 import { CreateProfileForm } from "./create-profile-form";
 
 export default async function Profiles() {
-	const result = await getFromServer<ProfilesResponse>("/api/profiles");
-	if (!result.ok) {
-		throw new Error(
-			`プロフィールの一覧を取得できませんでした（${result.status}）`,
-		);
-	}
-	const { profiles } = result.data;
+	const { profiles } = await loadFromServer<ProfilesResponse>(
+		"/api/profiles",
+		"/profiles",
+	);
 
 	return (
 		<main>
