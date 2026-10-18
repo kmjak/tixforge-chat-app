@@ -1,4 +1,8 @@
-import type { ProfileService, ServerService } from "@chat-app/db";
+import type {
+	ChannelService,
+	ProfileService,
+	ServerService,
+} from "@chat-app/db";
 import type {
 	ErrorResponse,
 	HealthResponse,
@@ -10,6 +14,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
+import { registerChannelRoutes } from "./channels";
 import { ApiError } from "./errors";
 import { registerProfileRoutes } from "./profiles";
 import { registerServerRoutes } from "./servers";
@@ -26,6 +31,8 @@ export type AppDeps = {
 	profiles: ProfileService;
 	/** サーバー・メンバー・招待リンクの操作 */
 	servers: ServerService;
+	/** チャンネルの操作 */
+	channels: ChannelService;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -63,6 +70,7 @@ export function createApp({
 	auth,
 	profiles,
 	servers,
+	channels,
 	webOrigin,
 }: AppDeps) {
 	const app = new Hono<AppEnv>();
@@ -128,6 +136,7 @@ export function createApp({
 
 	registerProfileRoutes(app, profiles);
 	registerServerRoutes(app, servers);
+	registerChannelRoutes(app, channels);
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {

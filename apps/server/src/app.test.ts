@@ -1,4 +1,8 @@
-import type { ProfileService, ServerService } from "@chat-app/db";
+import type {
+	ChannelService,
+	ProfileService,
+	ServerService,
+} from "@chat-app/db";
 import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
@@ -21,6 +25,7 @@ const deps = {
 		listUsages: async () => undefined,
 	} satisfies ProfileService,
 	servers: {} as ServerService,
+	channels: {} as ChannelService,
 	webOrigin: "http://localhost:3000",
 };
 
