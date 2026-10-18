@@ -13,9 +13,14 @@ describe("errorMessage", () => {
 		["PROFILE_IS_DEFAULT", "デフォルトのプロフィールは削除できません。"],
 		["PROFILE_IN_USE", "使用中のプロフィールは削除できません。"],
 		["NOT_FOUND", "見つかりませんでした。ページを読み込み直してください。"],
-	])("プロフィールの API の code（%s）のメッセージを返す", (code, message) => {
-		expect(errorMessage(code)).toBe(message);
-	});
+		["INVALID_SERVER_NAME", "サーバー名は 1〜100 文字で入力してください。"],
+		["INVITE_EXPIRED", "この招待リンクは有効期限が切れています。"],
+	])(
+		"プロフィール・サーバーの API の code（%s）のメッセージを返す",
+		(code, message) => {
+			expect(errorMessage(code)).toBe(message);
+		},
+	);
 
 	it.each([
 		["code が無い（429 など）", undefined],

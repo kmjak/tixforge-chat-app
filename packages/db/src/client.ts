@@ -1,8 +1,12 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
 export type Db = NodePgDatabase<typeof schema>;
+
+/** node-postgres（本番）と PGlite（テスト）のどちらの Drizzle でも受け取れる型 */
+export type AnyDb = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 /**
  * 接続の待ち時間の上限。Neon（シンガポール）への TLS と認証で 1〜2 秒、止まっていた DB の起動

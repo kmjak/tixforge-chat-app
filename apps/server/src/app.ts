@@ -1,4 +1,4 @@
-import type { ProfileService } from "@chat-app/db";
+import type { ProfileService, ServerService } from "@chat-app/db";
 import type {
 	ErrorResponse,
 	HealthResponse,
@@ -12,6 +12,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
 import { ApiError } from "./errors";
 import { registerProfileRoutes } from "./profiles";
+import { registerServerRoutes } from "./servers";
 
 /** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
 export type AppEnv = { Variables: { user: AuthUser } };
@@ -23,6 +24,8 @@ export type AppDeps = {
 	auth: AuthService;
 	/** 自分のプロフィールの操作 */
 	profiles: ProfileService;
+	/** サーバー・メンバー・招待リンクの操作 */
+	servers: ServerService;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -55,7 +58,13 @@ const INTERNAL_SERVER_ERROR: ErrorResponse = {
 	message: "Internal Server Error",
 };
 
-export function createApp({ pingDb, auth, profiles, webOrigin }: AppDeps) {
+export function createApp({
+	pingDb,
+	auth,
+	profiles,
+	servers,
+	webOrigin,
+}: AppDeps) {
 	const app = new Hono<AppEnv>();
 
 	// web（別の origin）から cookie 付きで呼べるようにする。プリフライト（OPTIONS）はここで返る
@@ -118,6 +127,7 @@ export function createApp({ pingDb, auth, profiles, webOrigin }: AppDeps) {
 	});
 
 	registerProfileRoutes(app, profiles);
+	registerServerRoutes(app, servers);
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {

@@ -1,4 +1,9 @@
-import { createDb, createProfileService, pingDb } from "@chat-app/db";
+import {
+	createDb,
+	createProfileService,
+	createServerService,
+	pingDb,
+} from "@chat-app/db";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
@@ -18,6 +23,7 @@ const app = createApp({
 		webOrigin: env.webOrigin,
 	}),
 	profiles: createProfileService(db),
+	servers: createServerService(db),
 	webOrigin: env.webOrigin,
 });
 

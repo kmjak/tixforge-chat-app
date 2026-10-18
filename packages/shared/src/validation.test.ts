@@ -1,8 +1,10 @@
 import {
+	isInviteExpiryHours,
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
 	normalizeName,
+	normalizeServerName,
 } from "./validation";
 
 describe("isStrongPassword", () => {
@@ -50,6 +52,7 @@ describe("normalizeName", () => {
 		["空", ""],
 		["空白だけ", "   "],
 		["33 文字", "あ".repeat(33)],
+		["U+0000 を含む", "a\u0000b"],
 	])("%s なら null", (_, name) => {
 		expect(normalizeName(name)).toBeNull();
 	});
@@ -68,4 +71,37 @@ describe("isValidBio", () => {
 	it("191 文字なら false", () => {
 		expect(isValidBio("あ".repeat(191))).toBe(false);
 	});
+
+	it("U+0000 を含むなら false", () => {
+		expect(isValidBio("a\u0000b")).toBe(false);
+	});
+});
+
+describe("normalizeServerName", () => {
+	it("前後の空白を除いた値を返す（100 文字まで）", () => {
+		expect(normalizeServerName("  My Server ")).toBe("My Server");
+		expect(normalizeServerName(` ${"あ".repeat(100)} `)).toBe("あ".repeat(100));
+	});
+
+	it.each([
+		["空", ""],
+		["空白だけ", "   "],
+		["101 文字", "あ".repeat(101)],
+		["U+0000 を含む", "a\u0000b"],
+	])("%s なら null", (_, name) => {
+		expect(normalizeServerName(name)).toBeNull();
+	});
+});
+
+describe("isInviteExpiryHours", () => {
+	it.each([[1], [6], [12], [24], [48], [null]])("%p は受け付ける", (value) => {
+		expect(isInviteExpiryHours(value)).toBe(true);
+	});
+
+	it.each([[0], [2], [72], ["24"], [undefined]])(
+		"%p は受け付けない",
+		(value) => {
+			expect(isInviteExpiryHours(value)).toBe(false);
+		},
+	);
 });

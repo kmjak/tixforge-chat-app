@@ -5,6 +5,7 @@ import {
 	check,
 	index,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -122,3 +123,74 @@ export const profiles = pgTable(
 		check("profiles_bio_length", sql`char_length(${table.bio}) <= 190`),
 	],
 );
+
+/** サーバー（docs/context/schema/servers.md）。論理削除の deleted_at は GT-000010 で足す */
+export const servers = pgTable(
+	"servers",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		name: varchar("name", { length: 100 }).notNull(),
+		ownerUserId: uuid("owner_user_id")
+			.notNull()
+			.references(() => user.id),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		check(
+			"servers_name_length",
+			sql`char_length(${table.name}) between 1 and 100`,
+		),
+	],
+);
+
+/**
+ * サーバーのメンバーと、サーバーで使うプロフィール（docs/context/schema/server_members.md）。
+ * left_at・left_display_name は退出（GT-000010）で使う。メンバーの判定は left_at が null の行
+ */
+export const serverMembers = pgTable(
+	"server_members",
+	{
+		serverId: uuid("server_id")
+			.notNull()
+			.references(() => servers.id),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => user.id),
+		profileId: uuid("profile_id").references(() => profiles.id, {
+			onDelete: "set null",
+		}),
+		joinedAt: timestamp("joined_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		leftAt: timestamp("left_at", { withTimezone: true }),
+		leftDisplayName: varchar("left_display_name", { length: 32 }),
+	},
+	(table) => [
+		primaryKey({ columns: [table.serverId, table.userId] }),
+		index("server_members_user_id_idx").on(table.userId),
+		index("server_members_profile_id_idx").on(table.profileId),
+		check(
+			"server_members_profile_while_member",
+			sql`${table.leftAt} is not null or ${table.profileId} is not null`,
+		),
+		check(
+			"server_members_left_display_name",
+			sql`${table.leftAt} is not null or ${table.leftDisplayName} is null`,
+		),
+	],
+);
+
+/** サーバーの招待リンク（docs/context/schema/server_invites.md）。URL には token を使い、id は出さない */
+export const serverInvites = pgTable("server_invites", {
+	id: uuid("id").primaryKey().defaultRandom(),
+	token: text("token").notNull().unique(),
+	serverId: uuid("server_id")
+		.notNull()
+		.references(() => servers.id),
+	createdByUserId: uuid("created_by_user_id")
+		.notNull()
+		.references(() => user.id),
+	expiresAt: timestamp("expires_at", { withTimezone: true }),
+	createdAt: createdAt(),
+});

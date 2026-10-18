@@ -1,5 +1,10 @@
 // テストだけで使う補助関数。本物のマイグレーションを当てた PGlite の DB で app を組み立てる
-import { createProfileService, type ProfileUsageSource } from "@chat-app/db";
+import {
+	createProfileService,
+	createServerService,
+	PROFILE_USAGE_SOURCES,
+	type ProfileUsageSource,
+} from "@chat-app/db";
 import { createTestDb, type TestDb } from "@chat-app/db/testing";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
@@ -23,12 +28,12 @@ export type TestApp = {
 
 /**
  * テスト用の DB と app を作る。回数の制限は、同じ相手から何度も呼ぶので無効にする。
- * 使用先の source は、指定しなければ空（割り当てが無い状態）
+ * 使用先の source は、指定しなければ登録済みの一覧
  */
 export async function setupTestApp({
-	usageSources = [],
+	usageSources = PROFILE_USAGE_SOURCES,
 }: {
-	/** プロフィールの使用先の source（割り当ての代わりにテストで差し込む） */
+	/** プロフィールの使用先の source。既定は登録済みの一覧（サーバーなど）。テストで偽物に差し替えられる */
 	usageSources?: ProfileUsageSource[];
 } = {}): Promise<TestApp> {
 	const db = await createTestDb();
@@ -42,6 +47,7 @@ export async function setupTestApp({
 			rateLimit: false,
 		}),
 		profiles: createProfileService(db, { usageSources }),
+		servers: createServerService(db),
 		webOrigin: WEB_ORIGIN,
 	});
 

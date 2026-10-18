@@ -10,9 +10,9 @@
 | 権限 | ログインしていること（ほかの条件はなし） |
 | パスパラメータ | なし |
 | query | なし |
-| 遷移可能先 | [`/`](root.md)・[`/profiles`](profiles.md) |
+| 遷移可能先 | [`/`](root.md)・[`/profiles`](profiles.md)・[`/servers`](servers.md) |
 | 呼び出す API | [`GET /api/auth/get-session`](../uri/get-api-auth-get-session.md)・[`POST /api/auth/sign-out`](../uri/post-api-auth-sign-out.md) |
 
 ### 詳細
 - サインインとサインアップの後に最初に開く画面。
-- サインアウトのボタンと、プロフィールの一覧（[`/profiles`](profiles.md)。GT-000008）へのリンクを置く。フレンド・サーバーなどの中身は、それぞれのチケットで足す。
+- サインアウトのボタンと、プロフィールの一覧（[`/profiles`](profiles.md)。GT-000008）・サーバーの一覧（[`/servers`](servers.md)。GT-000009）へのリンクを置く。フレンド・サーバーなどの中身は、それぞれのチケットで足す。

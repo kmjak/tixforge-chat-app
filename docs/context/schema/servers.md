@@ -3,7 +3,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| 状態 | 予定（GT-000009） |
+| 状態 | 実装済み（GT-000009） |
 | 目的 | Discord のようなコミュニティの単位。中にチャンネルを持つ。作った人がオーナーになる |
 
 ### 列
@@ -22,7 +22,7 @@
 - CHECK：`char_length(name) between 1 and 100`
 - アプリが守る
   - オーナーは、そのサーバーのメンバー（[`server_members`](server_members.md) で `left_at` が null）である。作るときに、オーナーをメンバーとして同じ transaction で加える
-  - 作るときに、既定のチャンネル `一般`（[`channels`](channels.md) の `is_default = true`）を同じ transaction で作る
+  - 作るときに、既定のチャンネル `一般`（[`channels`](channels.md) の `is_default = true`）を同じ transaction で作る（GT-000011 から。`channels` のテーブルを作る GT-000011 より前に作られたサーバーには、GT-000011 のマイグレーションで作る）
   - オーナーの譲渡は `owner_user_id` を書き換える。相手はそのサーバーのメンバーに限る（予定（GT-000010））
   - 削除は論理削除（予定（GT-000010））。同じ transaction で、全メンバーを退出の扱い（`server_members.left_at`・`left_display_name` を入れる）にする。プロフィールの使用先から外し、プロフィールを削除できるようにするため。削除したサーバーは、誰も取得できず、その招待リンクでも参加できない
 
