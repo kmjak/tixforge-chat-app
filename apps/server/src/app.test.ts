@@ -1,4 +1,4 @@
-import type { ProfileService } from "@chat-app/db";
+import type { ProfileService, ServerService } from "@chat-app/db";
 import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
@@ -20,6 +20,7 @@ const deps = {
 		remove: async () => ({ ok: false, reason: "not-found" }),
 		listUsages: async () => undefined,
 	} satisfies ProfileService,
+	servers: {} as ServerService,
 	webOrigin: "http://localhost:3000",
 };
 
