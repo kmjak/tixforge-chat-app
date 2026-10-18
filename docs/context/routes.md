@@ -6,13 +6,17 @@ web（Next.js）の画面のパスの一覧。パスごとの詳細は `routes/`
 /                 トップ（LP）            routes/root.md
 ├── sign-in       サインイン              routes/sign-in.md
 ├── sign-up       サインアップ            routes/sign-up.md
-└── home          ログイン後の画面        routes/home.md
+├── home          ログイン後の画面        routes/home.md
+└── profiles      プロフィールの一覧      routes/profiles.md
+    └── {profileId}  プロフィールの詳細   routes/profiles-{profileId}.md
 ```
 
 - [`/`](routes/root.md) — トップ（LP）
 - [`/sign-in`](routes/sign-in.md) — サインイン
 - [`/sign-up`](routes/sign-up.md) — サインアップ
 - [`/home`](routes/home.md) — ログイン後の画面
+- [`/profiles`](routes/profiles.md) — プロフィールの一覧
+- [`/profiles/{profileId}`](routes/profiles-{profileId}.md) — プロフィールの詳細
 
 ## 命名と階層のルール
 - パスは英小文字の kebab-case にする（例：`/sign-in`）。

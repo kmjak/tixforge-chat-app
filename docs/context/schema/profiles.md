@@ -26,7 +26,7 @@
 - アプリが守る（transaction の中で確かめる）
   - 1 つのアカウントのプロフィールは 5 個まで（デフォルトを含む）（[上限の数の守り方](../schema.md#命名と型の規則)のとおり、`user` の行をロックしてから数える）
   - デフォルトは常にちょうど 1 つ（サインアップで作り、切り替えは 1 つの transaction で入れ替える）。サインアップでは、`user` への INSERT の trigger（`user_create_default_profile`。マイグレーション `0002_default_profile_trigger`）が、`user.name` を name にしてデフォルトのプロフィールを作る。Better Auth のサインアップの transaction の中で動くので、プロフィールが作れなければアカウントもできない
-  - デフォルトと、使用中（[schema.md の「プロフィールの割り当て」](../schema.md#プロフィールの割り当て)）のプロフィールは削除できない
+  - デフォルトと、使用中（[schema.md の「プロフィールの割り当て」](../schema.md#プロフィールの割り当て)）のプロフィールは削除できない。作成・デフォルトの切り替え・削除は、どれも transaction の中で `user` の行をロックしてから行う（GT-000008。`packages/db/src/profiles.ts`）
 - 削除は物理削除。使用中は削除できないので、消して困る参照は無い。退出済みの行が持つ「直前のプロフィール」は `ON DELETE SET NULL` で外れる
 
 ### 関係
