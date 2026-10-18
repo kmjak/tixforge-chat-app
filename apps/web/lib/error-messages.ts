@@ -14,6 +14,12 @@ const MESSAGES: Record<string, string> = {
 	PROFILE_IS_DEFAULT: "デフォルトのプロフィールは削除できません。",
 	PROFILE_IN_USE: "使用中のプロフィールは削除できません。",
 	NOT_FOUND: "見つかりませんでした。ページを読み込み直してください。",
+	INVALID_SERVER_NAME: "サーバー名は 1〜100 文字で入力してください。",
+	INVALID_PROFILE:
+		"選んだプロフィールが見つかりません。ページを読み込み直してください。",
+	INVALID_EXPIRY: "有効期限を選び直してください。",
+	INVITE_NOT_FOUND: "この招待リンクは見つかりません。",
+	INVITE_EXPIRED: "この招待リンクは有効期限が切れています。",
 };
 
 /** code が無いとき（回数の制限の 429 など）・知らない code のときの共通のメッセージ */

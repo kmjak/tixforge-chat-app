@@ -11,6 +11,8 @@ describe("未ログインで保護されたページを開くと、サインイ�
 		["/home", "/sign-in?redirect=%2Fhome"],
 		["/servers/a?tab=b", "/sign-in?redirect=%2Fservers%2Fa%3Ftab%3Db"],
 		["/not-defined-yet", "/sign-in?redirect=%2Fnot-defined-yet"],
+		// 招待リンク：サインイン（とサインアップ）の後に、招待の画面へ戻る
+		["/invites/abc_-1", "/sign-in?redirect=%2Finvites%2Fabc_-1"],
 	])("%s → %s", (path, to) => {
 		expect(decide(path, false)).toEqual({ type: "redirect", to });
 	});

@@ -8,6 +8,9 @@ export default function Home() {
 			<p>
 				<Link href="/profiles">プロフィール</Link>
 			</p>
+			<p>
+				<Link href="/servers">サーバー</Link>
+			</p>
 			<SignOutButton />
 		</main>
 	);
