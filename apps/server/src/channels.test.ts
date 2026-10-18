@@ -187,6 +187,27 @@ describe("一覧と権限", () => {
 			"target",
 		]);
 	});
+
+	it("別のサーバーのチャンネルは、自分がオーナーのサーバーの URL からも取得・名前の変更・削除できない", async () => {
+		const a = await setup();
+		const b = await setup();
+		const other = await createOk(b.owner, b.base, "other");
+		const url = `${a.base}/${other.id}`;
+
+		const results = await Promise.all([
+			t.request("GET", url, { cookie: a.owner.cookie }),
+			t.request("PATCH", url, {
+				cookie: a.owner.cookie,
+				body: { name: "x" },
+			}),
+			t.request("DELETE", url, { cookie: a.owner.cookie }),
+		]);
+		for (const res of results) {
+			expect(res.status).toBe(404);
+			expect(await res.json()).toMatchObject({ code: "NOT_FOUND" });
+		}
+		expect(await list(b.owner, b.base)).toContainEqual(other);
+	});
 });
 
 describe("名前と上限", () => {

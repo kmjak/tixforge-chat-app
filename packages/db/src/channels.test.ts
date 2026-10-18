@@ -168,11 +168,54 @@ describe("createChannelService", () => {
 		expect(await c().get(owner.userId, serverId, "not-a-uuid")).toBeUndefined();
 	});
 
-	it("作成は、transaction の中で先に servers の行をロックしてから数える", async () => {
+	it("別のサーバーのチャンネルは、そのサーバーのオーナーでも取得・名前の変更・削除できない（not-found）", async () => {
+		const a = await setup();
+		const b = await setup();
+		const other = await c().create(b.owner.userId, b.serverId, "other");
+		if (!other.ok) throw new Error("チャンネルを作れない");
+		// a のオーナーが、自分のサーバー a の id と、b のチャンネルの id を組み合わせる
+		const otherId = other.channel.id;
+
+		expect(await c().get(a.owner.userId, a.serverId, otherId)).toBeUndefined();
+		expect(await c().rename(a.owner.userId, a.serverId, otherId, "x")).toEqual({
+			ok: false,
+			reason: "not-found",
+		});
+		expect(await c().remove(a.owner.userId, a.serverId, otherId)).toEqual({
+			ok: false,
+			reason: "not-found",
+		});
+		expect(await c().get(b.owner.userId, b.serverId, otherId)).toEqual(
+			other.channel,
+		);
+	});
+
+	it.each([
+		[
+			"作成は、transaction の中で先に servers の行をロックしてから数える",
+			"create",
+		],
+		[
+			"名前の変更は、transaction の中で先に servers の行をロックしてからオーナーを確かめる",
+			"rename",
+		],
+		[
+			"削除は、transaction の中で先に servers の行をロックしてからオーナーを確かめる",
+			"remove",
+		],
+	] as const)("%s", async (_, operation) => {
 		const { owner, serverId } = await setup();
+		const created = await c().create(owner.userId, serverId, "target");
+		if (!created.ok) throw new Error("チャンネルを作れない");
 		const queries = recordTransactionQueries();
 
-		await c().create(owner.userId, serverId, "locked");
+		if (operation === "create") {
+			await c().create(owner.userId, serverId, "locked");
+		} else if (operation === "rename") {
+			await c().rename(owner.userId, serverId, created.channel.id, "renamed");
+		} else {
+			await c().remove(owner.userId, serverId, created.channel.id);
+		}
 
 		expect(queries[0]).toMatch(/select .* from "servers" .*for update/i);
 	});

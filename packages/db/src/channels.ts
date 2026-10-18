@@ -71,6 +71,36 @@ async function findAliveChannel(
 }
 
 /**
+ * transaction の中で servers の行をロックしてから、オーナーか・チャンネルがあるかを確かめる
+ * （確かめた後、書き込むまでの間にオーナーが変わらないように。オーナーを変える処理も
+ * servers の行をロックする）
+ */
+async function lockAndFindChannel(
+	tx: AnyDb,
+	userId: string,
+	serverId: string,
+	channelId: string,
+): Promise<
+	{ ok: true; channel: Channel } | { ok: false; reason: NotFoundOrNotOwner }
+> {
+	if (!isUuid(serverId)) {
+		return { ok: false, reason: "not-found" };
+	}
+	await lockServer(tx, serverId);
+	const membership = await findServerMembership(tx, userId, serverId);
+	const channel = membership
+		? await findAliveChannel(tx, serverId, channelId)
+		: undefined;
+	if (!membership || !channel) {
+		return { ok: false, reason: "not-found" };
+	}
+	if (!membership.isOwner) {
+		return { ok: false, reason: "not-owner" };
+	}
+	return { ok: true, channel };
+}
+
+/**
  * チャンネルの操作。どれも呼び出した人がサーバーのメンバーのときだけ扱い、メンバーでない・
  * 存在しない・削除したチャンネルは not-found（docs/context/schema.md「参加者の確認」）。
  * 作成・名前の変更・削除はオーナーだけ（メンバーだがオーナーでなければ not-owner）。
@@ -138,44 +168,59 @@ export function createChannelService(db: AnyDb): ChannelService {
 				return { ok: true, channel } as const;
 			}),
 
-		rename: async (userId, serverId, channelId, name) => {
-			const membership = await findServerMembership(db, userId, serverId);
-			if (!membership || !(await findAliveChannel(db, serverId, channelId))) {
-				return { ok: false, reason: "not-found" } as const;
-			}
-			if (!membership.isOwner) {
-				return { ok: false, reason: "not-owner" } as const;
-			}
-			const [channel] = await db
-				.update(channels)
-				.set({ name, updatedAt: sql`now()` })
-				.where(and(eq(channels.id, channelId), isAlive))
-				.returning(channelColumns);
-			return channel
-				? ({ ok: true, channel } as const)
-				: ({ ok: false, reason: "not-found" } as const);
-		},
+		rename: (userId, serverId, channelId, name) =>
+			db.transaction(async (tx) => {
+				const access = await lockAndFindChannel(
+					tx,
+					userId,
+					serverId,
+					channelId,
+				);
+				if (!access.ok) {
+					return access;
+				}
+				const [channel] = await tx
+					.update(channels)
+					.set({ name, updatedAt: sql`now()` })
+					.where(
+						and(
+							eq(channels.id, channelId),
+							eq(channels.serverId, serverId),
+							isAlive,
+						),
+					)
+					.returning(channelColumns);
+				return channel
+					? ({ ok: true, channel } as const)
+					: ({ ok: false, reason: "not-found" } as const);
+			}),
 
-		remove: async (userId, serverId, channelId) => {
-			const membership = await findServerMembership(db, userId, serverId);
-			const channel = membership
-				? await findAliveChannel(db, serverId, channelId)
-				: undefined;
-			if (!membership || !channel) {
-				return { ok: false, reason: "not-found" } as const;
-			}
-			if (!membership.isOwner) {
-				return { ok: false, reason: "not-owner" } as const;
-			}
-			// 既定のチャンネルは削除できない（サーバーに常に 1 つ以上のチャンネルがあるように）
-			if (channel.isDefault) {
-				return { ok: false, reason: "default" } as const;
-			}
-			await db
-				.update(channels)
-				.set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
-				.where(and(eq(channels.id, channelId), isAlive));
-			return { ok: true } as const;
-		},
+		remove: (userId, serverId, channelId) =>
+			db.transaction(async (tx) => {
+				const access = await lockAndFindChannel(
+					tx,
+					userId,
+					serverId,
+					channelId,
+				);
+				if (!access.ok) {
+					return access;
+				}
+				// 既定のチャンネルは削除できない（サーバーに常に 1 つ以上のチャンネルがあるように）
+				if (access.channel.isDefault) {
+					return { ok: false, reason: "default" } as const;
+				}
+				await tx
+					.update(channels)
+					.set({ deletedAt: sql`now()`, updatedAt: sql`now()` })
+					.where(
+						and(
+							eq(channels.id, channelId),
+							eq(channels.serverId, serverId),
+							isAlive,
+						),
+					);
+				return { ok: true } as const;
+			}),
 	};
 }
