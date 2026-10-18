@@ -3,6 +3,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { AnyDb } from "./client";
 import { findOwnProfile, lockUser, profileColumns } from "./ownership";
 import { profiles } from "./schema";
+import { serverProfileUsageSource } from "./servers";
 
 export type { AnyDb };
 
@@ -38,7 +39,9 @@ export type ProfileUsageSource = (
  * 登録済みの使用先の source。割り当ての場を作るチケットが、ここに自分の source を足す
  * （割り当てる処理は、削除と同時に起きても使用中のプロフィールが消えないよう、user の行をロックしてから行う）
  */
-export const PROFILE_USAGE_SOURCES: ProfileUsageSource[] = [];
+export const PROFILE_USAGE_SOURCES: ProfileUsageSource[] = [
+	serverProfileUsageSource,
+];
 
 export type CreateProfileResult =
 	| { ok: true; profile: Profile }
