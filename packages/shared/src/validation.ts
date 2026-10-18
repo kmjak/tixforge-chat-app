@@ -52,3 +52,34 @@ export function normalizeName(name: string): string | null {
 export function isValidBio(bio: string): boolean {
 	return [...bio].length <= BIO_MAX_LENGTH;
 }
+
+/** サーバー名の長さの上限（前後の空白を除いて数える） */
+export const SERVER_NAME_MAX_LENGTH = 100;
+
+/**
+ * サーバー名の前後の空白を除いた値を返す。除いた後が 1〜100 文字でなければ null を返す。
+ * 文字数はコードポイントで数える
+ */
+export function normalizeServerName(name: string): string | null {
+	const trimmed = name.trim();
+	const length = [...trimmed].length;
+	if (length < 1 || length > SERVER_NAME_MAX_LENGTH) {
+		return null;
+	}
+	return trimmed;
+}
+
+/** 招待リンクの有効期限の選択肢（時間）。null は無制限 */
+export const INVITE_EXPIRY_HOURS = [1, 6, 12, 24, 48] as const;
+
+export type InviteExpiryHours = (typeof INVITE_EXPIRY_HOURS)[number] | null;
+
+/** 招待リンクの有効期限として受け付ける値か（1・6・12・24・48 時間か、無制限の null） */
+export function isInviteExpiryHours(
+	value: unknown,
+): value is InviteExpiryHours {
+	return (
+		value === null ||
+		(INVITE_EXPIRY_HOURS as readonly unknown[]).includes(value)
+	);
+}
