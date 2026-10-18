@@ -15,8 +15,13 @@ describe("errorMessage", () => {
 		["NOT_FOUND", "見つかりませんでした。ページを読み込み直してください。"],
 		["INVALID_SERVER_NAME", "サーバー名は 1〜100 文字で入力してください。"],
 		["INVITE_EXPIRED", "この招待リンクは有効期限が切れています。"],
+		[
+			"CHANNEL_LIMIT_REACHED",
+			"カテゴリに属さないチャンネルは 10 個まで作れます。",
+		],
+		["CHANNEL_IS_DEFAULT", "既定のチャンネルは削除できません。"],
 	])(
-		"プロフィール・サーバーの API の code（%s）のメッセージを返す",
+		"プロフィール・サーバー・チャンネルの API の code（%s）のメッセージを返す",
 		(code, message) => {
 			expect(errorMessage(code)).toBe(message);
 		},

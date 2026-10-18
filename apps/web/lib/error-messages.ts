@@ -20,6 +20,11 @@ const MESSAGES: Record<string, string> = {
 	INVALID_EXPIRY: "有効期限を選び直してください。",
 	INVITE_NOT_FOUND: "この招待リンクは見つかりません。",
 	INVITE_EXPIRED: "この招待リンクは有効期限が切れています。",
+	INVALID_CHANNEL_NAME:
+		"チャンネル名は、文字・数字・ハイフン・アンダースコアだけで 1〜100 文字にしてください（スペース・記号・絵文字は使えません）。",
+	NOT_SERVER_OWNER: "チャンネルを操作できるのは、サーバーのオーナーだけです。",
+	CHANNEL_LIMIT_REACHED: "カテゴリに属さないチャンネルは 10 個まで作れます。",
+	CHANNEL_IS_DEFAULT: "既定のチャンネルは削除できません。",
 };
 
 /** code が無いとき（回数の制限の 429 など）・知らない code のときの共通のメッセージ */

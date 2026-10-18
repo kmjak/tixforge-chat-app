@@ -1,4 +1,5 @@
 import type {
+	ChannelsResponse,
 	ProfilesResponse,
 	ServerMembersResponse,
 	ServerResponse,
@@ -6,6 +7,7 @@ import type {
 import Link from "next/link";
 import { loadFromServer } from "../../../lib/get-from-server";
 import { ChangeProfileForm } from "./change-profile-form";
+import { CreateChannelForm } from "./create-channel-form";
 import { CreateInviteForm } from "./create-invite-form";
 
 export default async function ServerDetail({
@@ -17,8 +19,9 @@ export default async function ServerDetail({
 	const path = `/api/servers/${encodeURIComponent(serverId)}`;
 	const currentPath = `/servers/${encodeURIComponent(serverId)}`;
 	// メンバーでない・存在しないサーバーは server が 404 を返し、404 の画面になる
-	const [server, { members }, { profiles }] = await Promise.all([
+	const [server, { channels }, { members }, { profiles }] = await Promise.all([
 		loadFromServer<ServerResponse>(path, currentPath),
+		loadFromServer<ChannelsResponse>(`${path}/channels`, currentPath),
 		loadFromServer<ServerMembersResponse>(`${path}/members`, currentPath),
 		loadFromServer<ProfilesResponse>("/api/profiles", currentPath),
 	]);
@@ -32,6 +35,19 @@ export default async function ServerDetail({
 				{server.name}
 				{server.isOwner && "（オーナー）"}
 			</h1>
+
+			<h2>チャンネル</h2>
+			<ul>
+				{channels.map((channel) => (
+					<li key={channel.id}>
+						<Link href={`/servers/${server.id}/channels/${channel.id}`}>
+							# {channel.name}
+						</Link>
+						{channel.isDefault && "（既定）"}
+					</li>
+				))}
+			</ul>
+			{server.isOwner && <CreateChannelForm serverId={server.id} />}
 
 			<h2>このサーバーで使うプロフィール</h2>
 			<ChangeProfileForm
