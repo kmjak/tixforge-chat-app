@@ -114,6 +114,8 @@ describe("条件を満たさない name・bio では作成・編集できない"
 		["name が文字列でない", { name: 1 }, "INVALID_NAME"],
 		["bio が 191 文字", { name: "ok", bio: "あ".repeat(191) }, "INVALID_BIO"],
 		["bio が文字列でない", { name: "ok", bio: null }, "INVALID_BIO"],
+		["name が U+0000 を含む", { name: "a\u0000b" }, "INVALID_NAME"],
+		["bio が U+0000 を含む", { name: "ok", bio: "a\u0000b" }, "INVALID_BIO"],
 	];
 
 	it.each(invalid)("作成：%s → 400 %s", async (_, body, code) => {

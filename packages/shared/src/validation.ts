@@ -11,6 +11,9 @@ export const MAX_PROFILES = 5;
 /** プロフィールの自己紹介（bio）の長さの上限 */
 export const BIO_MAX_LENGTH = 190;
 
+/** Postgres の文字列に入れられない文字（U+0000）。含む値は、DB のエラー（500）にせず入力の誤りにする */
+const NUL = "\u0000";
+
 /** 記号として数える文字（ASCII の記号 32 字） */
 const SYMBOL = /[!-/:-@[-`{-~]/;
 
@@ -39,7 +42,7 @@ export function isPasswordLengthValid(password: string): boolean {
 export function normalizeName(name: string): string | null {
 	const trimmed = name.trim();
 	const length = [...trimmed].length;
-	if (length < 1 || length > NAME_MAX_LENGTH) {
+	if (length < 1 || length > NAME_MAX_LENGTH || trimmed.includes(NUL)) {
 		return null;
 	}
 	return trimmed;
@@ -50,7 +53,7 @@ export function normalizeName(name: string): string | null {
  * 文字数は Postgres の char_length と同じく、コードポイントで数える
  */
 export function isValidBio(bio: string): boolean {
-	return [...bio].length <= BIO_MAX_LENGTH;
+	return [...bio].length <= BIO_MAX_LENGTH && !bio.includes(NUL);
 }
 
 /** サーバー名の長さの上限（前後の空白を除いて数える） */
@@ -63,7 +66,7 @@ export const SERVER_NAME_MAX_LENGTH = 100;
 export function normalizeServerName(name: string): string | null {
 	const trimmed = name.trim();
 	const length = [...trimmed].length;
-	if (length < 1 || length > SERVER_NAME_MAX_LENGTH) {
+	if (length < 1 || length > SERVER_NAME_MAX_LENGTH || trimmed.includes(NUL)) {
 		return null;
 	}
 	return trimmed;
