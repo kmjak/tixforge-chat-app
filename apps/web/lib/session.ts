@@ -1,5 +1,8 @@
-/** server がセッションを返すまで待つ上限。応答が無ければ未ログインとして扱う */
-export const SESSION_TIMEOUT_MS = 5000;
+/**
+ * server がセッションを返すまで待つ上限。応答が無ければ未ログインとして扱う。
+ * server が DB への接続とクエリで最大 12 秒（packages/db の DB_MAX_WAIT_MS）待つので、それより長くする
+ */
+export const SESSION_TIMEOUT_MS = 15_000;
 
 /**
  * リクエストの cookie を付けて server の GET /api/auth/get-session を呼び、ログインしているかを返す。

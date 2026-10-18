@@ -1,4 +1,10 @@
-export { createDb, DB_TIMEOUT_MS, type Db } from "./client";
+export {
+	createDb,
+	DB_CONNECT_TIMEOUT_MS,
+	DB_MAX_WAIT_MS,
+	DB_QUERY_TIMEOUT_MS,
+	type Db,
+} from "./client";
 export { pingDb } from "./health";
 export {
 	type AnyDb,

@@ -1,5 +1,8 @@
-/** web の server 側（ページの表示）から server の API を呼ぶときの待ち時間の上限 */
-export const SERVER_API_TIMEOUT_MS = 5000;
+/**
+ * web の server 側（ページの表示）から server の API を呼ぶときの待ち時間の上限。
+ * server が DB への接続とクエリで最大 12 秒（packages/db の DB_MAX_WAIT_MS）待つので、それより長くする
+ */
+export const SERVER_API_TIMEOUT_MS = 15_000;
 
 export type ServerGetResult<T> =
 	| { ok: true; data: T }
