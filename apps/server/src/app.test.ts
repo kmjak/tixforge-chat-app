@@ -1,6 +1,7 @@
 import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
+import { ApiError, readJson } from "./errors";
 
 /** /health のテストでは認証を使わない */
 const deps = {
@@ -75,6 +76,38 @@ describe("エラーの共通形式", () => {
 			expect(await res.json()).toEqual({ code, message });
 		},
 	);
+
+	it("ApiError を投げると、そのステータスと code で返す", async () => {
+		const app = loggedInApp();
+		app.get("/api/test/api-error", () => {
+			throw new ApiError(409, "SOMETHING_CONFLICTED", "Conflicted");
+		});
+
+		const res = await app.request("/api/test/api-error");
+
+		expect(res.status).toBe(409);
+		expect(await res.json()).toEqual({
+			code: "SOMETHING_CONFLICTED",
+			message: "Conflicted",
+		});
+	});
+
+	it("JSON として読めない本文は 400 BAD_REQUEST を返す", async () => {
+		const app = loggedInApp();
+		app.post("/api/test/json", async (c) => c.json(await readJson(c)));
+
+		const res = await app.request("/api/test/json", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: "{broken",
+		});
+
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({
+			code: "BAD_REQUEST",
+			message: "Malformed JSON",
+		});
+	});
 
 	it("ログイン確認（getSession）が例外を投げると、500 INTERNAL_SERVER_ERROR を返し、理由は応答に含めない", async () => {
 		const log = jest.spyOn(console, "error").mockImplementation(() => {});

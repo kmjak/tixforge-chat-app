@@ -9,6 +9,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
+import { ApiError } from "./errors";
 
 /** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
 export type AppEnv = { Variables: { user: AuthUser } };
@@ -119,7 +120,10 @@ export function createApp({
 			const status = error.status as ContentfulStatusCode;
 			return c.json<ErrorResponse>(
 				{
-					code: ERROR_CODES[status] ?? `HTTP_${status}`,
+					code:
+						error instanceof ApiError
+							? error.code
+							: (ERROR_CODES[status] ?? `HTTP_${status}`),
 					message: error.message || "Request Error",
 				},
 				status,
