@@ -1,4 +1,5 @@
 export {
+	type AnyDb,
 	createDb,
 	DB_CONNECT_TIMEOUT_MS,
 	DB_MAX_WAIT_MS,
@@ -7,7 +8,6 @@ export {
 } from "./client";
 export { pingDb } from "./health";
 export {
-	type AnyDb,
 	type CreateProfileResult,
 	createProfileService,
 	type DeleteProfileResult,

@@ -1,11 +1,10 @@
 import { MAX_PROFILES } from "@chat-app/shared";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
-import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import type * as schema from "./schema";
-import { profiles, user } from "./schema";
+import type { AnyDb } from "./client";
+import { findOwnProfile, lockUser, profileColumns } from "./ownership";
+import { profiles } from "./schema";
 
-/** node-postgres（本番）と PGlite（テスト）のどちらの Drizzle でも受け取れる型 */
-export type AnyDb = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type { AnyDb };
 
 /** 本人に見せるプロフィールの項目 */
 export type ProfileSummary = { id: string; name: string; bio: string };
@@ -79,15 +78,6 @@ export type ProfileService = {
 	) => Promise<ProfileUsage[] | undefined>;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const columns = {
-	id: profiles.id,
-	name: profiles.name,
-	bio: profiles.bio,
-	isDefault: profiles.isDefault,
-};
-
 /** アカウントのデフォルトのプロフィールを返す。無ければ undefined */
 export async function findDefaultProfile(
 	db: AnyDb,
@@ -98,34 +88,6 @@ export async function findDefaultProfile(
 		.from(profiles)
 		.where(and(eq(profiles.userId, userId), eq(profiles.isDefault, true)));
 	return row;
-}
-
-async function findOwn(
-	db: AnyDb,
-	userId: string,
-	profileId: string,
-): Promise<Profile | undefined> {
-	if (!UUID.test(profileId)) {
-		return undefined;
-	}
-	const [row] = await db
-		.select(columns)
-		.from(profiles)
-		.where(and(eq(profiles.id, profileId), eq(profiles.userId, userId)));
-	return row;
-}
-
-/**
- * user の行をロックする。同じアカウントのプロフィールの作成・切り替え・削除（と割り当て）を
- * 順番に並べ、数の上限・デフォルトが 1 つ・使用中の判定が同時の操作で崩れないようにする
- * （docs/context/schema.md「命名と型の規則」）
- */
-async function lockUser(tx: AnyDb, userId: string): Promise<void> {
-	await tx
-		.select({ id: user.id })
-		.from(user)
-		.where(eq(user.id, userId))
-		.for("update");
 }
 
 async function findUsages(
@@ -150,7 +112,7 @@ export function createProfileService(
 
 		list: (userId) =>
 			db
-				.select(columns)
+				.select(profileColumns)
 				.from(profiles)
 				.where(eq(profiles.userId, userId))
 				// デフォルトを先頭に、残りは作った順
@@ -160,7 +122,7 @@ export function createProfileService(
 					asc(profiles.id),
 				),
 
-		get: (userId, profileId) => findOwn(db, userId, profileId),
+		get: (userId, profileId) => findOwnProfile(db, userId, profileId),
 
 		create: (userId, { name, bio }) =>
 			db.transaction(async (tx) => {
@@ -175,7 +137,7 @@ export function createProfileService(
 				const [profile] = await tx
 					.insert(profiles)
 					.values({ userId, name, bio })
-					.returning(columns);
+					.returning(profileColumns);
 				if (!profile) {
 					throw new Error("プロフィールを作れませんでした");
 				}
@@ -187,7 +149,7 @@ export function createProfileService(
 				if (isDefault) {
 					await lockUser(tx, userId);
 				}
-				const own = await findOwn(tx, userId, profileId);
+				const own = await findOwnProfile(tx, userId, profileId);
 				if (!own) {
 					return undefined;
 				}
@@ -214,7 +176,7 @@ export function createProfileService(
 						})
 						.where(eq(profiles.id, profileId));
 				}
-				return findOwn(tx, userId, profileId);
+				return findOwnProfile(tx, userId, profileId);
 			}),
 
 		setDefault: (userId, profileId) =>
@@ -223,7 +185,7 @@ export function createProfileService(
 		remove: (userId, profileId) =>
 			db.transaction(async (tx) => {
 				await lockUser(tx, userId);
-				const own = await findOwn(tx, userId, profileId);
+				const own = await findOwnProfile(tx, userId, profileId);
 				if (!own) {
 					return { ok: false, reason: "not-found" } as const;
 				}
@@ -238,7 +200,7 @@ export function createProfileService(
 			}),
 
 		listUsages: async (userId, profileId) => {
-			const own = await findOwn(db, userId, profileId);
+			const own = await findOwnProfile(db, userId, profileId);
 			return own ? findUsages(db, usageSources, profileId) : undefined;
 		},
 	};
