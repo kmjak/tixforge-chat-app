@@ -5,6 +5,9 @@ export const PASSWORD_MAX_LENGTH = 128;
 /** 名前の長さの上限（前後の空白を除いて数える。プロフィールの name と同じ） */
 export const NAME_MAX_LENGTH = 32;
 
+/** プロフィールの自己紹介（bio）の長さの上限 */
+export const BIO_MAX_LENGTH = 190;
+
 /** 記号として数える文字（ASCII の記号 32 字） */
 const SYMBOL = /[!-/:-@[-`{-~]/;
 
@@ -37,4 +40,12 @@ export function normalizeName(name: string): string | null {
 		return null;
 	}
 	return trimmed;
+}
+
+/**
+ * 自己紹介（bio）が 0〜190 文字か。前後の空白は取り除かず、入力のまま数える（改行なども自己紹介の一部）。
+ * 文字数は Postgres の char_length と同じく、コードポイントで数える
+ */
+export function isValidBio(bio: string): boolean {
+	return [...bio].length <= BIO_MAX_LENGTH;
 }

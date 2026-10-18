@@ -1,6 +1,7 @@
 import {
 	isPasswordLengthValid,
 	isStrongPassword,
+	isValidBio,
 	normalizeName,
 } from "./validation";
 
@@ -51,5 +52,20 @@ describe("normalizeName", () => {
 		["33 文字", "あ".repeat(33)],
 	])("%s なら null", (_, name) => {
 		expect(normalizeName(name)).toBeNull();
+	});
+});
+
+describe("isValidBio", () => {
+	it.each([
+		["空", ""],
+		["190 文字", "あ".repeat(190)],
+		["絵文字 190 文字（コードポイントで数える）", "😀".repeat(190)],
+		["前後の空白や改行を含む 190 文字", ` ${"a".repeat(187)}\n `],
+	])("%s なら true", (_, bio) => {
+		expect(isValidBio(bio)).toBe(true);
+	});
+
+	it("191 文字なら false", () => {
+		expect(isValidBio("あ".repeat(191))).toBe(false);
 	});
 });

@@ -18,8 +18,10 @@ export type ErrorResponse = {
 	message: string;
 };
 export {
+	BIO_MAX_LENGTH,
 	isPasswordLengthValid,
 	isStrongPassword,
+	isValidBio,
 	NAME_MAX_LENGTH,
 	normalizeName,
 	PASSWORD_MAX_LENGTH,
