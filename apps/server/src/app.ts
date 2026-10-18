@@ -1,14 +1,17 @@
-import type { ProfileSummary } from "@chat-app/db";
+import type { ProfileService } from "@chat-app/db";
 import type {
 	ErrorResponse,
 	HealthResponse,
 	MeResponse,
 } from "@chat-app/shared";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
+import { ApiError } from "./errors";
+import { registerProfileRoutes } from "./profiles";
 
 /** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
 export type AppEnv = { Variables: { user: AuthUser } };
@@ -18,8 +21,8 @@ export type AppDeps = {
 	pingDb: () => Promise<boolean>;
 	/** 認証（/api/auth/* の処理と、ログインしているかの確認） */
 	auth: AuthService;
-	/** アカウントのデフォルトのプロフィールを返す。無ければ undefined */
-	findDefaultProfile: (userId: string) => Promise<ProfileSummary | undefined>;
+	/** 自分のプロフィールの操作 */
+	profiles: ProfileService;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -44,17 +47,15 @@ const ERROR_CODES: Record<number, string> = {
 	429: "TOO_MANY_REQUESTS",
 };
 
+/** API のリクエストの本文の大きさの上限。超えたら 413 PAYLOAD_TOO_LARGE（読み込む前に断る） */
+const MAX_BODY_BYTES = 100 * 1024;
+
 const INTERNAL_SERVER_ERROR: ErrorResponse = {
 	code: "INTERNAL_SERVER_ERROR",
 	message: "Internal Server Error",
 };
 
-export function createApp({
-	pingDb,
-	auth,
-	findDefaultProfile,
-	webOrigin,
-}: AppDeps) {
+export function createApp({ pingDb, auth, profiles, webOrigin }: AppDeps) {
 	const app = new Hono<AppEnv>();
 
 	// web（別の origin）から cookie 付きで呼べるようにする。プリフライト（OPTIONS）はここで返る
@@ -65,6 +66,20 @@ export function createApp({
 			credentials: true,
 			allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 			allowHeaders: ["Content-Type"],
+		}),
+	);
+
+	app.use(
+		"/api/*",
+		bodyLimit({
+			maxSize: MAX_BODY_BYTES,
+			onError: () => {
+				throw new ApiError(
+					413,
+					"PAYLOAD_TOO_LARGE",
+					"Request body is too large",
+				);
+			},
 		}),
 	);
 
@@ -88,7 +103,7 @@ export function createApp({
 
 	app.get("/api/me", async (c) => {
 		const user = c.get("user");
-		const defaultProfile = await findDefaultProfile(user.id);
+		const defaultProfile = await profiles.findDefault(user.id);
 		if (!defaultProfile) {
 			// サインアップの trigger で必ず作るので、起きないはず
 			throw new Error(
@@ -101,6 +116,8 @@ export function createApp({
 			defaultProfile,
 		});
 	});
+
+	registerProfileRoutes(app, profiles);
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {
@@ -119,7 +136,10 @@ export function createApp({
 			const status = error.status as ContentfulStatusCode;
 			return c.json<ErrorResponse>(
 				{
-					code: ERROR_CODES[status] ?? `HTTP_${status}`,
+					code:
+						error instanceof ApiError
+							? error.code
+							: (ERROR_CODES[status] ?? `HTTP_${status}`),
 					message: error.message || "Request Error",
 				},
 				status,

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "../../lib/auth-client";
-import { authErrorMessage, DEFAULT_ERROR_MESSAGE } from "../../lib/auth-errors";
+import { DEFAULT_ERROR_MESSAGE, errorMessage } from "../../lib/error-messages";
 
 export function SignOutButton() {
 	const router = useRouter();
@@ -14,7 +14,7 @@ export function SignOutButton() {
 		try {
 			const { error } = await authClient.signOut();
 			if (error) {
-				setError(authErrorMessage(error.code));
+				setError(errorMessage(error.code));
 				return;
 			}
 		} catch {

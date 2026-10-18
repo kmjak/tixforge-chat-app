@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../../lib/auth-client";
-import { authErrorMessage, DEFAULT_ERROR_MESSAGE } from "../../lib/auth-errors";
+import { DEFAULT_ERROR_MESSAGE, errorMessage } from "../../lib/error-messages";
 import { resolveRedirect, withRedirect } from "../../lib/redirect";
 
 export function SignInForm({ redirect }: { redirect: string | undefined }) {
@@ -24,7 +24,7 @@ export function SignInForm({ redirect }: { redirect: string | undefined }) {
 				password: String(form.get("password")),
 			});
 			if (error) {
-				setError(authErrorMessage(error.code));
+				setError(errorMessage(error.code));
 				setPending(false);
 				return;
 			}

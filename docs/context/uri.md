@@ -7,6 +7,12 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 ├── health                        GET   ヘルスチェック          uri/get-health.md
 └── api
     ├── me                        GET   ログイン中のアカウント  uri/get-api-me.md
+    ├── profiles                  GET   プロフィールの一覧      uri/get-api-profiles.md
+    │   │                         POST  プロフィールの作成      uri/post-api-profiles.md
+    │   └── {profileId}           GET   プロフィールの取得      uri/get-api-profiles-{profileId}.md
+    │       │                     PATCH プロフィールの編集      uri/patch-api-profiles-{profileId}.md
+    │       │                     DELETE プロフィールの削除     uri/delete-api-profiles-{profileId}.md
+    │       └── usages            GET   プロフィールの使用先    uri/get-api-profiles-{profileId}-usages.md
     └── auth                      （Better Auth が使う）
         ├── sign-up
         │   └── email             POST  サインアップ            uri/post-api-auth-sign-up-email.md
@@ -18,6 +24,12 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 
 - [`GET /health`](uri/get-health.md) — ヘルスチェック
 - [`GET /api/me`](uri/get-api-me.md) — ログイン中のアカウント
+- [`GET /api/profiles`](uri/get-api-profiles.md) — プロフィールの一覧
+- [`POST /api/profiles`](uri/post-api-profiles.md) — プロフィールの作成
+- [`GET /api/profiles/{profileId}`](uri/get-api-profiles-{profileId}.md) — プロフィールの取得
+- [`PATCH /api/profiles/{profileId}`](uri/patch-api-profiles-{profileId}.md) — プロフィールの編集・デフォルトへの切り替え
+- [`DELETE /api/profiles/{profileId}`](uri/delete-api-profiles-{profileId}.md) — プロフィールの削除
+- [`GET /api/profiles/{profileId}/usages`](uri/get-api-profiles-{profileId}-usages.md) — プロフィールの使用先
 - [`POST /api/auth/sign-up/email`](uri/post-api-auth-sign-up-email.md) — サインアップ
 - [`POST /api/auth/sign-in/email`](uri/post-api-auth-sign-in-email.md) — サインイン
 - [`POST /api/auth/sign-out`](uri/post-api-auth-sign-out.md) — サインアウト

@@ -1,6 +1,8 @@
+import type { ProfileService } from "@chat-app/db";
 import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
+import { ApiError, readJson } from "./errors";
 
 /** /health のテストでは認証を使わない */
 const deps = {
@@ -8,7 +10,16 @@ const deps = {
 		handler: async () => new Response(null, { status: 404 }),
 		getSession: async () => null,
 	},
-	findDefaultProfile: async () => undefined,
+	profiles: {
+		findDefault: async () => undefined,
+		list: async () => [],
+		get: async () => undefined,
+		create: async () => ({ ok: false, reason: "limit" }),
+		update: async () => undefined,
+		setDefault: async () => undefined,
+		remove: async () => ({ ok: false, reason: "not-found" }),
+		listUsages: async () => undefined,
+	} satisfies ProfileService,
 	webOrigin: "http://localhost:3000",
 };
 
@@ -75,6 +86,90 @@ describe("エラーの共通形式", () => {
 			expect(await res.json()).toEqual({ code, message });
 		},
 	);
+
+	it("ApiError を投げると、そのステータスと code で返す", async () => {
+		const app = loggedInApp();
+		app.get("/api/test/api-error", () => {
+			throw new ApiError(409, "SOMETHING_CONFLICTED", "Conflicted");
+		});
+
+		const res = await app.request("/api/test/api-error");
+
+		expect(res.status).toBe(409);
+		expect(await res.json()).toEqual({
+			code: "SOMETHING_CONFLICTED",
+			message: "Conflicted",
+		});
+	});
+
+	it("JSON として読めない本文は 400 BAD_REQUEST を返す", async () => {
+		const app = loggedInApp();
+		app.post("/api/test/json", async (c) => c.json(await readJson(c)));
+
+		const res = await app.request("/api/test/json", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: "{broken",
+		});
+
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({
+			code: "BAD_REQUEST",
+			message: "Malformed JSON",
+		});
+	});
+
+	it.each([
+		["text/plain", "text/plain"],
+		["指定なし", undefined],
+	])(
+		"Content-Type が application/json でない本文（%s）は 415 UNSUPPORTED_MEDIA_TYPE を返す",
+		async (_, contentType) => {
+			const app = loggedInApp();
+			app.post("/api/test/json", async (c) => c.json(await readJson(c)));
+
+			const res = await app.request("/api/test/json", {
+				method: "POST",
+				headers: contentType ? { "Content-Type": contentType } : {},
+				body: JSON.stringify({ name: "x" }),
+			});
+
+			expect(res.status).toBe(415);
+			expect(await res.json()).toMatchObject({
+				code: "UNSUPPORTED_MEDIA_TYPE",
+			});
+		},
+	);
+
+	it("Content-Type に charset が付いていても JSON として読む", async () => {
+		const app = loggedInApp();
+		app.post("/api/test/json", async (c) => c.json(await readJson(c)));
+
+		const res = await app.request("/api/test/json", {
+			method: "POST",
+			headers: { "Content-Type": "application/json; charset=utf-8" },
+			body: JSON.stringify({ name: "x" }),
+		});
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ name: "x" });
+	});
+
+	it("100 KB を超える本文は、読み込まずに 413 PAYLOAD_TOO_LARGE を返す", async () => {
+		const app = loggedInApp();
+		const handler = jest.fn((c) => c.json({}));
+		app.post("/api/test/json", handler);
+
+		const res = await app.request("/api/test/json", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ bio: "a".repeat(100 * 1024) }),
+		});
+
+		expect(res.status).toBe(413);
+		expect(await res.json()).toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
+		expect(handler).not.toHaveBeenCalled();
+	});
 
 	it("ログイン確認（getSession）が例外を投げると、500 INTERNAL_SERVER_ERROR を返し、理由は応答に含めない", async () => {
 		const log = jest.spyOn(console, "error").mockImplementation(() => {});
