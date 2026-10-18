@@ -184,10 +184,17 @@ type InviteRow = {
 	expired: boolean;
 };
 
+/** 招待リンクのトークンの形（generateInviteToken が作る 32 バイトの base64url = 43 文字） */
+const INVITE_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+
 async function selectInvite(
 	db: AnyDb,
 	token: string,
 ): Promise<InviteRow | undefined> {
+	// 形の違うトークン（U+0000 を含むものなど）は、DB に渡さずに「存在しない」とする
+	if (!INVITE_TOKEN.test(token)) {
+		return undefined;
+	}
 	const [row] = await db
 		.select({
 			serverId: servers.id,

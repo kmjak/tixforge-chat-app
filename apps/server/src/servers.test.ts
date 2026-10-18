@@ -240,6 +240,9 @@ describe("招待リンク", () => {
 		for (const [token, status, code] of [
 			[expired.token, 410, "INVITE_EXPIRED"],
 			["no-such-token", 404, "INVITE_NOT_FOUND"],
+			// 形の違うトークン（U+0000 を含むなど）も、DB のエラー（500）にせず 404
+			["a%00b", 404, "INVITE_NOT_FOUND"],
+			["%00", 404, "INVITE_NOT_FOUND"],
 		] as const) {
 			const info = await t.request("GET", `/api/invites/${token}`, {
 				cookie: guest.cookie,
