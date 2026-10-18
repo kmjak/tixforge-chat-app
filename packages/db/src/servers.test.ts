@@ -125,6 +125,60 @@ describe("createServerService", () => {
 		expect(await s().listMembers(owner.userId, server.id)).toHaveLength(2);
 	});
 
+	it("退出した行があれば、その行を戻して再参加する（退出は GT-000010。ここでは SQL で作る）", async () => {
+		const owner = await insertUser("Owner");
+		const guest = await insertUser("Guest");
+		const server = await createServer(owner);
+		const invite = await s().createInvite(owner.userId, server.id, null);
+		if (!invite) throw new Error("招待を作れない");
+		await s().join(guest.userId, invite.token, guest.profileId);
+		await db.$client.query(
+			"UPDATE server_members SET left_at = now(), left_display_name = 'Guest' WHERE server_id = $1 AND user_id = $2",
+			[server.id, guest.userId],
+		);
+		expect(await s().list(guest.userId)).toEqual([]);
+		const sub = await createProfileService(db).create(guest.userId, {
+			name: "Again",
+			bio: "",
+		});
+		if (!sub.ok) throw new Error("作れない");
+
+		expect(await s().join(guest.userId, invite.token, sub.profile.id)).toEqual({
+			ok: true,
+			serverId: server.id,
+			alreadyMember: false,
+		});
+		expect(await s().list(guest.userId)).toEqual([
+			expect.objectContaining({
+				id: server.id,
+				myProfile: { id: sub.profile.id, name: "Again" },
+			}),
+		]);
+		const { rows } = await db.$client.query<{
+			left_at: unknown;
+			left_display_name: unknown;
+		}>(
+			"SELECT left_at, left_display_name FROM server_members WHERE server_id = $1 AND user_id = $2",
+			[server.id, guest.userId],
+		);
+		expect(rows).toEqual([{ left_at: null, left_display_name: null }]);
+	});
+
+	it("既にメンバーでも、他人のプロフィールを送ったら入力の誤りにする", async () => {
+		const owner = await insertUser();
+		const server = await createServer(owner);
+		const other = await insertUser();
+		const invite = await s().createInvite(owner.userId, server.id, null);
+		if (!invite) throw new Error("招待を作れない");
+
+		expect(await s().join(owner.userId, invite.token, other.profileId)).toEqual(
+			{
+				ok: false,
+				reason: "invalid-profile",
+			},
+		);
+	});
+
 	it("期限切れ・存在しない招待では参加できない", async () => {
 		const owner = await insertUser();
 		const guest = await insertUser();

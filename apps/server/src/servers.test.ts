@@ -281,6 +281,11 @@ describe("招待リンク", () => {
 		expect((await myServers(guest))[0]?.myProfile.id).toBe(
 			guest.defaultProfileId,
 		);
+
+		// 既にメンバーでも、他人のプロフィールは入力の誤り
+		const wrong = await join(guest, token, owner.defaultProfileId);
+		expect(wrong.status).toBe(400);
+		expect(await wrong.json()).toMatchObject({ code: "INVALID_PROFILE" });
 	});
 });
 

@@ -377,6 +377,10 @@ export function createServerService(
 				if (invite.expired) {
 					return { ok: false, reason: "expired" } as const;
 				}
+				const profile = await findOwnProfile(tx, userId, profileId);
+				if (!profile) {
+					return { ok: false, reason: "invalid-profile" } as const;
+				}
 				// 既にメンバーなら、二重に参加せず、使うプロフィールも変えない
 				if (await isMember(tx, userId, invite.serverId)) {
 					return {
@@ -385,14 +389,19 @@ export function createServerService(
 						alreadyMember: true,
 					} as const;
 				}
-				const profile = await findOwnProfile(tx, userId, profileId);
-				if (!profile) {
-					return { ok: false, reason: "invalid-profile" } as const;
-				}
+				// 退出した行（GT-000010）があれば、その行を戻す（再参加。schema の server_members）
 				await tx
 					.insert(serverMembers)
 					.values({ serverId: invite.serverId, userId, profileId: profile.id })
-					.onConflictDoNothing();
+					.onConflictDoUpdate({
+						target: [serverMembers.serverId, serverMembers.userId],
+						set: {
+							profileId: profile.id,
+							leftAt: null,
+							leftDisplayName: null,
+							joinedAt: sql`now()`,
+						},
+					});
 				return {
 					ok: true,
 					serverId: invite.serverId,

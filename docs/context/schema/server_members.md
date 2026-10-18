@@ -25,7 +25,7 @@
 - アプリが守る
   - 参加・プロフィールの変更で選べるのは、自分のプロフィールだけ。作成・参加・プロフィールの変更は、transaction の最初に、そのアカウントの `user` の行をロックする（[プロフィールの割り当て](../schema.md#プロフィールの割り当て)の規則）
   - 退出：`left_at` と `left_display_name`（そのときのプロフィールの名前）を入れる。`profile_id` は残す。オーナーは譲渡するまで退出できない（予定（GT-000010））
-  - 再参加：同じ行の `left_at`・`left_display_name` を null にし、`profile_id` を選んだプロフィールにし、`joined_at` を更新する。選ぶ画面の初期値は `profile_id`（null ならデフォルトのプロフィール）
+  - 再参加：同じ行の `left_at`・`left_display_name` を null にし、`profile_id` を選んだプロフィールにし、`joined_at` を更新する。選ぶ画面の初期値は `profile_id`（null ならデフォルトのプロフィール）。行を戻す処理は GT-000009 で実装済み（招待での参加）。画面の初期値は予定（GT-000010）
   - 表示（メンバーの一覧・メッセージの送り手）：見る人がその人のフレンドなら、フレンドの割り当て（[フレンドが優先](../schema.md#プロフィールの割り当て)。GT-000015 から。`packages/db/src/servers.ts` の `MemberProfileResolver` に足す。退出済みなら「（退出済み）」を付ける）。それ以外は、メンバーなら `profile_id` のプロフィール、退出済みなら `left_display_name` と「（退出済み）」
 
 ### 関係
