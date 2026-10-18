@@ -75,14 +75,17 @@ export type ErrorResponse = {
 };
 export {
 	BIO_MAX_LENGTH,
+	CHANNEL_NAME_MAX_LENGTH,
 	INVITE_EXPIRY_HOURS,
 	type InviteExpiryHours,
 	isInviteExpiryHours,
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
+	MAX_CHANNELS_WITHOUT_CATEGORY,
 	MAX_PROFILES,
 	NAME_MAX_LENGTH,
+	normalizeChannelName,
 	normalizeName,
 	normalizeServerName,
 	PASSWORD_MAX_LENGTH,
