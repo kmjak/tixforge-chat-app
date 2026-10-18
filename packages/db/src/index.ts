@@ -1,4 +1,10 @@
 export {
+	type Channel,
+	type ChannelService,
+	createChannelService,
+	DEFAULT_CHANNEL_NAME,
+} from "./channels";
+export {
 	type AnyDb,
 	createDb,
 	DB_CONNECT_TIMEOUT_MS,
