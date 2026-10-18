@@ -11,22 +11,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { authClient } from "../../lib/auth-client";
-import { authErrorMessage, DEFAULT_ERROR_MESSAGE } from "../../lib/auth-errors";
+import { DEFAULT_ERROR_MESSAGE, errorMessage } from "../../lib/error-messages";
 import { resolveRedirect, withRedirect } from "../../lib/redirect";
 
 /** server と同じ規則で先に確かめ、送る前に知らせる（最終的な判定は server が行う） */
 function validate(name: string, password: string): string | null {
 	if (normalizeName(name) === null) {
-		return authErrorMessage("INVALID_NAME");
+		return errorMessage("INVALID_NAME");
 	}
 	if (password.length < PASSWORD_MIN_LENGTH) {
-		return authErrorMessage("PASSWORD_TOO_SHORT");
+		return errorMessage("PASSWORD_TOO_SHORT");
 	}
 	if (password.length > PASSWORD_MAX_LENGTH) {
-		return authErrorMessage("PASSWORD_TOO_LONG");
+		return errorMessage("PASSWORD_TOO_LONG");
 	}
 	if (isPasswordLengthValid(password) && !isStrongPassword(password)) {
-		return authErrorMessage("PASSWORD_TOO_WEAK");
+		return errorMessage("PASSWORD_TOO_WEAK");
 	}
 	return null;
 }
@@ -57,7 +57,7 @@ export function SignUpForm({ redirect }: { redirect: string | undefined }) {
 				password,
 			});
 			if (error) {
-				setError(authErrorMessage(error.code));
+				setError(errorMessage(error.code));
 				setPending(false);
 				return;
 			}

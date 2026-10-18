@@ -1,4 +1,4 @@
-/** server の認証 API が返すエラーの code ごとの、画面に出すメッセージ */
+/** server の API が返すエラーの code ごとの、画面に出すメッセージ */
 const MESSAGES: Record<string, string> = {
 	INVALID_EMAIL: "メールアドレスの形が正しくありません。",
 	INVALID_NAME: "名前は 1〜32 文字で入力してください。",
@@ -16,7 +16,7 @@ export const DEFAULT_ERROR_MESSAGE =
 	"うまくいきませんでした。時間をおいて、もう一度お試しください。";
 
 /** エラーの code から、画面に出すメッセージを返す */
-export function authErrorMessage(code: string | undefined): string {
+export function errorMessage(code: string | undefined): string {
 	return code && Object.hasOwn(MESSAGES, code)
 		? (MESSAGES[code] ?? DEFAULT_ERROR_MESSAGE)
 		: DEFAULT_ERROR_MESSAGE;
