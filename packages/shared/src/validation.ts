@@ -86,3 +86,39 @@ export function isInviteExpiryHours(
 		(INVITE_EXPIRY_HOURS as readonly unknown[]).includes(value)
 	);
 }
+
+/** チャンネル名の長さの上限 */
+export const CHANNEL_NAME_MAX_LENGTH = 100;
+
+/** カテゴリに属さないチャンネルの、1 つのサーバーでの上限（既定のチャンネルを含む） */
+export const MAX_CHANNELS_WITHOUT_CATEGORY = 10;
+
+/**
+ * チャンネル名の規則：文字（あらゆる言語）・数字・`-`・`_` の並び。
+ * - 文字に付く記号（濁点の結合文字・母音記号など＝\p{Mn}・\p{Mc}）は、文字・数字の後にだけ、
+ *   4 個まで続けてよい（タイ語・ベトナム語などは 2〜3 個で足りる）。先頭が結合文字の名前や、
+ *   結合文字を重ねて表示を崩す名前を通さないため
+ * - 絵文字を作るための異体字セレクタ（U+FE00〜FE0F・U+E0100〜E01EF）は許さず、囲み記号（\p{Me}）も
+ *   含めない（「1」＋異体字セレクタ＋囲み記号の 1️⃣ のような絵文字が通らないように）
+ * - 見えない文字（ハングルのフィラー U+115F・U+1160・U+3164・U+FFA0、CGJ U+034F）は許さない
+ *   （空に見える名前を作れないように）
+ */
+const CHANNEL_NAME_PATTERN =
+	/^(?:(?![\u115F\u1160\u3164\uFFA0])[\p{L}\p{N}_-](?:(?![\u034F\uFE00-\uFE0F\u{E0100}-\u{E01EF}])[\p{Mn}\p{Mc}]){0,4})+$/u;
+
+/**
+ * チャンネル名の前後の空白を除いた値を返す。除いた後が 1〜100 文字で、すべての文字が
+ * 文字・数字・`-`・`_` でなければ null を返す（スペース・記号・絵文字は使えない）。
+ * 文字数はコードポイントで数える
+ */
+export function normalizeChannelName(name: string): string | null {
+	const chars = [...name.trim()];
+	if (
+		chars.length < 1 ||
+		chars.length > CHANNEL_NAME_MAX_LENGTH ||
+		!CHANNEL_NAME_PATTERN.test(chars.join(""))
+	) {
+		return null;
+	}
+	return chars.join("");
+}

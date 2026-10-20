@@ -1,9 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { DEFAULT_CHANNEL_NAME } from "./channels";
 import type { AnyDb } from "./client";
 import { findOwnProfile, isUuid, lockUser } from "./ownership";
 import type { ProfileUsage, ProfileUsageSource } from "./profiles";
-import { profiles, serverInvites, serverMembers, servers } from "./schema";
+import {
+	channels,
+	profiles,
+	serverInvites,
+	serverMembers,
+	servers,
+} from "./schema";
 
 /** 自分が参加しているサーバー */
 export type ServerSummary = {
@@ -257,6 +264,13 @@ export function createServerService(
 				await tx
 					.insert(serverMembers)
 					.values({ serverId: server.id, userId, profileId: profile.id });
+				// 既定のチャンネル「一般」を同じ transaction で作る（docs/context/schema/servers.md）
+				await tx.insert(channels).values({
+					serverId: server.id,
+					name: DEFAULT_CHANNEL_NAME,
+					isDefault: true,
+					position: 1,
+				});
 				return {
 					ok: true,
 					server: {

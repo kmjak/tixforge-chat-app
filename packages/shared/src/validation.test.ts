@@ -3,6 +3,7 @@ import {
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
+	normalizeChannelName,
 	normalizeName,
 	normalizeServerName,
 } from "./validation";
@@ -104,4 +105,57 @@ describe("isInviteExpiryHours", () => {
 			expect(isInviteExpiryHours(value)).toBe(false);
 		},
 	);
+});
+
+describe("normalizeChannelName", () => {
+	it.each([
+		[
+			"英字・数字・ハイフン・アンダースコア",
+			"general_chat-2",
+			"general_chat-2",
+		],
+		[
+			"日本語（ひらがな・カタカナ・漢字・長音）",
+			"ざつだんルーム雑談",
+			"ざつだんルーム雑談",
+		],
+		["全角数字・漢数字", "第１回十", "第１回十"],
+		["アラビア文字", "مرحبا", "مرحبا"],
+		["タイ語（母音記号を含む）", "สวัสดี", "สวัสดี"],
+		["結合文字の濁点（か＋゛）", "か\u3099", "か\u3099"],
+		[
+			"1 文字に結合文字 4 個",
+			"a\u0301\u0302\u0303\u0323",
+			"a\u0301\u0302\u0303\u0323",
+		],
+		["前後の空白は取り除く", "  一般\n", "一般"],
+		["100 文字", "あ".repeat(100), "あ".repeat(100)],
+	])("%s は通る", (_, name, expected) => {
+		expect(normalizeChannelName(name)).toBe(expected);
+	});
+
+	it.each([
+		["空", ""],
+		["空白だけ", "   "],
+		["101 文字", "あ".repeat(101)],
+		["中にスペース", "general chat"],
+		["中に全角スペース", "雑談\u3000ルーム"],
+		["記号", "chat!"],
+		["中黒", "雑談・ルーム"],
+		["ドット", "a.b"],
+		["絵文字", "chat😀"],
+		["異体字セレクタ付きの絵文字", "❤\uFE0F"],
+		["キーキャップの絵文字（1️⃣）", "1\uFE0F\u20E3"],
+		["ZWJ でつないだ絵文字", "👨\u200D👩"],
+		["U+0000", "a\u0000b"],
+		["先頭が結合文字", "\u3099か"],
+		["1 文字に結合文字 5 個", "a\u0301\u0302\u0303\u0323\u0324"],
+		["異体字セレクタの補助の範囲", "a\u{E0100}"],
+		["CGJ", "a\u034F"],
+		["ハングルのフィラーだけ", "\u3164"],
+		["半角のハングルのフィラー", "a\uFFA0"],
+		["ハングルの初声・中声のフィラー", "\u115F\u1160"],
+	])("%s は通らない", (_, name) => {
+		expect(normalizeChannelName(name)).toBeNull();
+	});
 });

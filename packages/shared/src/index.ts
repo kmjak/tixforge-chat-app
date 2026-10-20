@@ -66,6 +66,12 @@ export type InviteResponse = {
 /** `POST /api/invites/{token}/join` のレスポンス */
 export type JoinServerResponse = { serverId: string; alreadyMember: boolean };
 
+/** サーバーのチャンネル（`/api/servers/{serverId}/channels` の API） */
+export type ChannelResponse = { id: string; name: string; isDefault: boolean };
+
+/** `GET /api/servers/{serverId}/channels` のレスポンス。作った順 */
+export type ChannelsResponse = { channels: ChannelResponse[] };
+
 /** 4xx・5xx のレスポンスの共通形式（docs/context/uri.md「エラーの共通形式」） */
 export type ErrorResponse = {
 	/** エラーの種類（英大文字の SNAKE_CASE）。web はこれで分岐する */
@@ -75,14 +81,17 @@ export type ErrorResponse = {
 };
 export {
 	BIO_MAX_LENGTH,
+	CHANNEL_NAME_MAX_LENGTH,
 	INVITE_EXPIRY_HOURS,
 	type InviteExpiryHours,
 	isInviteExpiryHours,
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
+	MAX_CHANNELS_WITHOUT_CATEGORY,
 	MAX_PROFILES,
 	NAME_MAX_LENGTH,
+	normalizeChannelName,
 	normalizeName,
 	normalizeServerName,
 	PASSWORD_MAX_LENGTH,

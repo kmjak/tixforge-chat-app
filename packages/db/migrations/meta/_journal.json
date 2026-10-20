@@ -29,6 +29,20 @@
       "when": 1792350950573,
       "tag": "0003_servers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792354707038,
+      "tag": "0004_channels",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792354707552,
+      "tag": "0005_default_channels_for_existing_servers",
+      "breakpoints": true
     }
   ]
 }

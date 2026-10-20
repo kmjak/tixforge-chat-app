@@ -4,6 +4,7 @@ import {
 	boolean,
 	check,
 	index,
+	integer,
 	pgTable,
 	primaryKey,
 	text,
@@ -194,3 +195,37 @@ export const serverInvites = pgTable("server_invites", {
 	expiresAt: timestamp("expires_at", { withTimezone: true }),
 	createdAt: createdAt(),
 });
+
+/**
+ * チャンネル（docs/context/schema/channels.md）。category_id はカテゴリ（GT-000012）で足す。
+ * 既定のチャンネル「一般」はサーバーの作成と同じ transaction で作る（それより前のサーバーはマイグレーション 0005）
+ */
+export const channels = pgTable(
+	"channels",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		serverId: uuid("server_id")
+			.notNull()
+			.references(() => servers.id),
+		name: varchar("name", { length: 100 }).notNull(),
+		isDefault: boolean("is_default").notNull().default(false),
+		position: integer("position").notNull(),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+	},
+	(table) => [
+		index("channels_server_id_position_idx").on(table.serverId, table.position),
+		uniqueIndex("channels_server_id_default_idx")
+			.on(table.serverId)
+			.where(sql`${table.isDefault} = true`),
+		check(
+			"channels_name_length",
+			sql`char_length(${table.name}) between 1 and 100`,
+		),
+		check(
+			"channels_default_not_deleted",
+			sql`not (${table.isDefault} and ${table.deletedAt} is not null)`,
+		),
+	],
+);
