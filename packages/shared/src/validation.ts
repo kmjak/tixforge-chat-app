@@ -93,6 +93,12 @@ export const CHANNEL_NAME_MAX_LENGTH = 100;
 /** カテゴリに属さないチャンネルの、1 つのサーバーでの上限（既定のチャンネルを含む） */
 export const MAX_CHANNELS_WITHOUT_CATEGORY = 10;
 
+/** 1 つのカテゴリに入れられるチャンネルの上限 */
+export const MAX_CHANNELS_PER_CATEGORY = 10;
+
+/** カテゴリの、1 つのサーバーでの上限 */
+export const MAX_CATEGORIES = 5;
+
 /**
  * チャンネル名の規則：文字（あらゆる言語）・数字・`-`・`_` の並び。
  * - 文字に付く記号（濁点の結合文字・母音記号など＝\p{Mn}・\p{Mc}）は、文字・数字の後にだけ、
