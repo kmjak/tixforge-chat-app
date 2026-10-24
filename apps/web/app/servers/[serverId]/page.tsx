@@ -1,5 +1,6 @@
 import type {
-	ChannelsResponse,
+	ChannelLayoutResponse,
+	ChannelResponse,
 	ProfilesResponse,
 	ServerMembersResponse,
 	ServerResponse,
@@ -19,9 +20,9 @@ export default async function ServerDetail({
 	const path = `/api/servers/${encodeURIComponent(serverId)}`;
 	const currentPath = `/servers/${encodeURIComponent(serverId)}`;
 	// メンバーでない・存在しないサーバーは server が 404 を返し、404 の画面になる
-	const [server, { channels }, { members }, { profiles }] = await Promise.all([
+	const [server, layout, { members }, { profiles }] = await Promise.all([
 		loadFromServer<ServerResponse>(path, currentPath),
-		loadFromServer<ChannelsResponse>(`${path}/channels`, currentPath),
+		loadFromServer<ChannelLayoutResponse>(`${path}/channels`, currentPath),
 		loadFromServer<ServerMembersResponse>(`${path}/members`, currentPath),
 		loadFromServer<ProfilesResponse>("/api/profiles", currentPath),
 	]);
@@ -37,17 +38,30 @@ export default async function ServerDetail({
 			</h1>
 
 			<h2>チャンネル</h2>
-			<ul>
-				{channels.map((channel) => (
-					<li key={channel.id}>
-						<Link href={`/servers/${server.id}/channels/${channel.id}`}>
-							# {channel.name}
+			{/* カテゴリに属さないチャンネルを先に、続けてカテゴリの見出しと中のチャンネル */}
+			<ChannelList serverId={server.id} channels={layout.channels} />
+			{layout.categories.map((category) => (
+				<section key={category.id}>
+					<h3>{category.name}</h3>
+					<ChannelList serverId={server.id} channels={category.channels} />
+				</section>
+			))}
+			{server.isOwner && (
+				<>
+					<CreateChannelForm
+						serverId={server.id}
+						categories={layout.categories.map(({ id, name }) => ({
+							id,
+							name,
+						}))}
+					/>
+					<p>
+						<Link href={`/servers/${server.id}/channel-order`}>
+							カテゴリと並び順を編集する
 						</Link>
-						{channel.isDefault && "（既定）"}
-					</li>
-				))}
-			</ul>
-			{server.isOwner && <CreateChannelForm serverId={server.id} />}
+					</p>
+				</>
+			)}
 
 			<h2>このサーバーで使うプロフィール</h2>
 			<ChangeProfileForm
@@ -71,5 +85,26 @@ export default async function ServerDetail({
 			<h2>招待リンク</h2>
 			<CreateInviteForm serverId={server.id} />
 		</main>
+	);
+}
+
+function ChannelList({
+	serverId,
+	channels,
+}: {
+	serverId: string;
+	channels: ChannelResponse[];
+}) {
+	return (
+		<ul>
+			{channels.map((channel) => (
+				<li key={channel.id}>
+					<Link href={`/servers/${serverId}/channels/${channel.id}`}>
+						# {channel.name}
+					</Link>
+					{channel.isDefault && "（既定）"}
+				</li>
+			))}
+		</ul>
 	);
 }

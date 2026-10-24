@@ -17,11 +17,20 @@ describe("errorMessage", () => {
 		["INVITE_EXPIRED", "この招待リンクは有効期限が切れています。"],
 		[
 			"CHANNEL_LIMIT_REACHED",
-			"カテゴリに属さないチャンネルは 10 個まで作れます。",
+			"1 つのカテゴリ、またはカテゴリに属さないチャンネルは 10 個までです。",
 		],
 		["CHANNEL_IS_DEFAULT", "既定のチャンネルは削除できません。"],
+		["CATEGORY_LIMIT_REACHED", "カテゴリは 5 個まで作れます。"],
+		[
+			"CATEGORY_HAS_DEFAULT_CHANNEL",
+			"既定のチャンネルが入っているカテゴリは削除できません。先に既定のチャンネルをほかの並びへ移してください。",
+		],
+		[
+			"LAYOUT_OUTDATED",
+			"ほかの画面でチャンネルやカテゴリが変わりました。読み込み直したので、もう一度並べ替えてください。",
+		],
 	])(
-		"プロフィール・サーバー・チャンネルの API の code（%s）のメッセージを返す",
+		"プロフィール・サーバー・チャンネル・カテゴリの API の code（%s）のメッセージを返す",
 		(code, message) => {
 			expect(errorMessage(code)).toBe(message);
 		},

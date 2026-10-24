@@ -69,9 +69,6 @@ export type JoinServerResponse = { serverId: string; alreadyMember: boolean };
 /** サーバーのチャンネル（`/api/servers/{serverId}/channels` の API） */
 export type ChannelResponse = { id: string; name: string; isDefault: boolean };
 
-/** `GET /api/servers/{serverId}/channels` のレスポンス。作った順 */
-export type ChannelsResponse = { channels: ChannelResponse[] };
-
 /** チャンネルのカテゴリ（`/api/servers/{serverId}/categories` の API） */
 export type CategoryResponse = { id: string; name: string };
 
