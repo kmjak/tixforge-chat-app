@@ -76,7 +76,9 @@ export function registerChannelRoutes(
 						"CHANNEL_LIMIT_REACHED",
 						"A server can have at most 10 channels without a category",
 					)
-				: reasonError(result.reason);
+				: result.reason === "invalid-category"
+					? new ApiError(400, "INVALID_CATEGORY", "Category not found")
+					: reasonError(result.reason);
 		}
 		return c.json<ChannelResponse>(result.channel, 201);
 	});
