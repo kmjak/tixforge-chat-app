@@ -43,6 +43,13 @@
       "when": 1792354707552,
       "tag": "0005_default_channels_for_existing_servers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792821099449,
+      "tag": "0006_channel_categories",
+      "breakpoints": true
     }
   ]
 }
