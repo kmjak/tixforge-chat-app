@@ -1,4 +1,5 @@
 import {
+	createCategoryService,
 	createChannelService,
 	createDb,
 	createProfileService,
@@ -26,6 +27,7 @@ const app = createApp({
 	profiles: createProfileService(db),
 	servers: createServerService(db),
 	channels: createChannelService(db),
+	categories: createCategoryService(db),
 	webOrigin: env.webOrigin,
 });
 

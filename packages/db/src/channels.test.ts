@@ -76,11 +76,21 @@ function recordTransactionQueries(): string[] {
 
 describe("createChannelService", () => {
 	const c = () => createChannelService(db);
+	/** 並びを平らにしたチャンネル（カテゴリに属さないもの → カテゴリの順） */
+	const list = async (userId: string, serverId: string) => {
+		const layout = await c().layout(userId, serverId);
+		return (
+			layout && [
+				...layout.channels,
+				...layout.categories.flatMap((category) => category.channels),
+			]
+		);
+	};
 
 	it("サーバーを作ると、既定のチャンネル「一般」が 1 つある", async () => {
 		const { owner, serverId } = await setup();
 
-		expect(await c().list(owner.userId, serverId)).toEqual([
+		expect(await list(owner.userId, serverId)).toEqual([
 			{ id: expect.any(String), name: "一般", isDefault: true },
 		]);
 	});
@@ -95,22 +105,20 @@ describe("createChannelService", () => {
 			ok: false,
 			reason: "limit",
 		});
-		const list = await c().list(owner.userId, serverId);
-		expect(list?.map((ch) => ch.name)).toEqual([
+		const all = await list(owner.userId, serverId);
+		expect(all?.map((ch) => ch.name)).toEqual([
 			"一般",
 			...Array.from({ length: 9 }, (_, i) => `c${i + 2}`),
 		]);
 
-		const second = list?.[1];
+		const second = all?.[1];
 		if (!second) throw new Error("チャンネルが無い");
 		expect(await c().remove(owner.userId, serverId, second.id)).toEqual({
 			ok: true,
 		});
 		expect((await c().create(owner.userId, serverId, "again")).ok).toBe(true);
 		// 新しいものは最後に並ぶ
-		expect((await c().list(owner.userId, serverId))?.at(-1)?.name).toBe(
-			"again",
-		);
+		expect((await list(owner.userId, serverId))?.at(-1)?.name).toBe("again");
 		// 削除したものは取得できないが、行は deleted_at 付きで残る
 		expect(await c().get(owner.userId, serverId, second.id)).toBeUndefined();
 		const { rows } = await db.$client.query<{ deleted: boolean }>(
@@ -122,7 +130,7 @@ describe("createChannelService", () => {
 
 	it("既定のチャンネルは名前を変えられるが、削除できない", async () => {
 		const { owner, serverId } = await setup();
-		const [general] = (await c().list(owner.userId, serverId)) ?? [];
+		const [general] = (await list(owner.userId, serverId)) ?? [];
 		if (!general) throw new Error("一般が無い");
 
 		expect(
@@ -140,10 +148,10 @@ describe("createChannelService", () => {
 	it("メンバーは見られるが操作できず（not-owner）、メンバーでない人は見られない（not-found）", async () => {
 		const { owner, member, serverId } = await setup();
 		const stranger = await insertUser("Stranger");
-		const [general] = (await c().list(owner.userId, serverId)) ?? [];
+		const [general] = (await list(owner.userId, serverId)) ?? [];
 		if (!general) throw new Error("一般が無い");
 
-		expect(await c().list(member.userId, serverId)).toHaveLength(1);
+		expect(await list(member.userId, serverId)).toHaveLength(1);
 		expect(await c().create(member.userId, serverId, "x")).toEqual({
 			ok: false,
 			reason: "not-owner",
@@ -157,7 +165,7 @@ describe("createChannelService", () => {
 			reason: "not-owner",
 		});
 
-		expect(await c().list(stranger.userId, serverId)).toBeUndefined();
+		expect(await list(stranger.userId, serverId)).toBeUndefined();
 		expect(
 			await c().get(stranger.userId, serverId, general.id),
 		).toBeUndefined();
@@ -165,7 +173,7 @@ describe("createChannelService", () => {
 			ok: false,
 			reason: "not-found",
 		});
-		expect(await c().list(owner.userId, "not-a-uuid")).toBeUndefined();
+		expect(await list(owner.userId, "not-a-uuid")).toBeUndefined();
 		expect(await c().get(owner.userId, serverId, "not-a-uuid")).toBeUndefined();
 	});
 
@@ -294,14 +302,14 @@ describe("createChannelService", () => {
 					await c().create(owner.userId, serverId, "x", categoryId),
 				).toEqual({ ok: false, reason: "invalid-category" });
 			}
-			expect(await c().list(owner.userId, serverId)).toHaveLength(1);
+			expect(await list(owner.userId, serverId)).toHaveLength(1);
 		});
 
 		it("並び順の保存で、順を振り直し、カテゴリに入れる・出す・移すことができる", async () => {
 			const { owner, member, serverId } = await setup();
 			const a = await createCategory(owner.userId, serverId, "a");
 			const b = await createCategory(owner.userId, serverId, "b");
-			const [general] = (await c().list(owner.userId, serverId)) ?? [];
+			const [general] = (await list(owner.userId, serverId)) ?? [];
 			if (!general) throw new Error("一般が無い");
 			const top = await createIn(owner.userId, serverId, "top", null);
 			const inA = await createIn(owner.userId, serverId, "in-a", a);
@@ -338,7 +346,7 @@ describe("createChannelService", () => {
 		it("並び順の保存は、今の集まりと違えば outdated、重複・形が違えば invalid、並びが上限を超えれば limit で、何も変えない", async () => {
 			const { owner, member, serverId } = await setup();
 			const k = await createCategory(owner.userId, serverId, "k");
-			const [general] = (await c().list(owner.userId, serverId)) ?? [];
+			const [general] = (await list(owner.userId, serverId)) ?? [];
 			if (!general) throw new Error("一般が無い");
 			const tops: string[] = [general.id];
 			for (let i = 2; i <= 10; i++) {

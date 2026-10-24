@@ -1,5 +1,6 @@
 // テストだけで使う補助関数。本物のマイグレーションを当てた PGlite の DB で app を組み立てる
 import {
+	createCategoryService,
 	createChannelService,
 	createProfileService,
 	createServerService,
@@ -50,6 +51,7 @@ export async function setupTestApp({
 		profiles: createProfileService(db, { usageSources }),
 		servers: createServerService(db),
 		channels: createChannelService(db),
+		categories: createCategoryService(db),
 		webOrigin: WEB_ORIGIN,
 	});
 

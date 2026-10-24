@@ -1,4 +1,5 @@
 import type {
+	CategoryService,
 	ChannelService,
 	ProfileService,
 	ServerService,
@@ -14,6 +15,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { AuthService, AuthUser } from "./auth";
+import { registerCategoryRoutes } from "./categories";
 import { registerChannelRoutes } from "./channels";
 import { ApiError } from "./errors";
 import { registerProfileRoutes } from "./profiles";
@@ -33,6 +35,8 @@ export type AppDeps = {
 	servers: ServerService;
 	/** チャンネルの操作 */
 	channels: ChannelService;
+	/** チャンネルのカテゴリの操作 */
+	categories: CategoryService;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -71,6 +75,7 @@ export function createApp({
 	profiles,
 	servers,
 	channels,
+	categories,
 	webOrigin,
 }: AppDeps) {
 	const app = new Hono<AppEnv>();
@@ -137,6 +142,7 @@ export function createApp({
 	registerProfileRoutes(app, profiles);
 	registerServerRoutes(app, servers);
 	registerChannelRoutes(app, channels);
+	registerCategoryRoutes(app, categories);
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {

@@ -1,4 +1,5 @@
 import type {
+	CategoryService,
 	ChannelService,
 	ProfileService,
 	ServerService,
@@ -26,6 +27,7 @@ const deps = {
 	} satisfies ProfileService,
 	servers: {} as ServerService,
 	channels: {} as ChannelService,
+	categories: {} as CategoryService,
 	webOrigin: "http://localhost:3000",
 };
 

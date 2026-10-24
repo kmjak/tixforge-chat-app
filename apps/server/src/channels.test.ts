@@ -1,6 +1,6 @@
 import type {
+	ChannelLayoutResponse,
 	ChannelResponse,
-	ChannelsResponse,
 	CreatedInviteResponse,
 	ProfileResponse,
 	ServerResponse,
@@ -65,7 +65,7 @@ async function setup() {
 async function list(a: Account, base: string) {
 	const res = await t.request("GET", base, { cookie: a.cookie });
 	expect(res.status).toBe(200);
-	return ((await res.json()) as ChannelsResponse).channels;
+	return ((await res.json()) as ChannelLayoutResponse).channels;
 }
 
 function create(a: Account, base: string, name: unknown) {
@@ -82,9 +82,11 @@ describe("既定のチャンネル", () => {
 	it("サーバーを作ると、一般 のチャンネルがある", async () => {
 		const { owner, base } = await setup();
 
-		expect(await list(owner, base)).toEqual([
-			{ id: expect.any(String), name: "一般", isDefault: true },
-		]);
+		const res = await t.request("GET", base, { cookie: owner.cookie });
+		expect(await res.json()).toEqual({
+			channels: [{ id: expect.any(String), name: "一般", isDefault: true }],
+			categories: [],
+		});
 	});
 
 	it("既定のチャンネルは、名前を変えられるが、削除できない", async () => {

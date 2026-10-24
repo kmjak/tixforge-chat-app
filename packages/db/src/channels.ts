@@ -31,8 +31,6 @@ export type ChannelLayoutInput = {
 type NotFoundOrNotOwner = "not-found" | "not-owner";
 
 export type ChannelService = {
-	/** 並び順のとおりに平らに並べたチャンネル（カテゴリに属さないもの → カテゴリの順） */
-	list: (userId: string, serverId: string) => Promise<Channel[] | undefined>;
 	layout: (
 		userId: string,
 		serverId: string,
@@ -233,17 +231,6 @@ function sameSet(a: string[], b: string[]): boolean {
  */
 export function createChannelService(db: AnyDb): ChannelService {
 	return {
-		list: async (userId, serverId) => {
-			if (!(await findServerMembership(db, userId, serverId))) {
-				return undefined;
-			}
-			const layout = await readLayout(db, serverId);
-			return [
-				...layout.channels,
-				...layout.categories.flatMap((category) => category.channels),
-			];
-		},
-
 		layout: async (userId, serverId) => {
 			if (!(await findServerMembership(db, userId, serverId))) {
 				return undefined;
