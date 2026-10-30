@@ -9,9 +9,3 @@ onlyBuiltDependencies:
 ignoredBuiltDependencies:
   - "@parcel/watcher"
   - unrs-resolver
-
-# 依存の依存の版を上書きする
-overrides:
-  # drizzle-kit の @esbuild-kit/core-utils は esbuild ~0.18.20 に固定していて、
-  # esbuild の開発サーバーの脆弱性（GHSA-67mh-4wv8-2f99）が直った 0.25 系にできないため（GT-000034）
-  "@esbuild-kit/core-utils>esbuild": ^0.25.0
