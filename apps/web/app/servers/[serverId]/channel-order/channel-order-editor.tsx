@@ -176,6 +176,7 @@ export function ChannelOrderEditor({
 						key={`${category.id}:${category.name}`}
 						category={category}
 						hasDefault={category.channels.some((ch) => ch.isDefault)}
+						channelCount={category.channels.length}
 						disabled={categoryBusy}
 						onRename={(name) =>
 							sendCategory(`${api}/categories/${category.id}`, "PATCH", {
@@ -299,12 +300,14 @@ function ChannelRows({
 function CategoryRow({
 	category,
 	hasDefault,
+	channelCount,
 	disabled,
 	onRename,
 	onDelete,
 }: {
 	category: CategoryResponse;
 	hasDefault: boolean;
+	channelCount: number;
 	disabled: boolean;
 	onRename: (name: string) => Promise<boolean>;
 	onDelete: () => Promise<boolean>;
@@ -312,6 +315,19 @@ function CategoryRow({
 	function handleRename(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		void onRename(String(new FormData(event.currentTarget).get("name")));
+	}
+
+	function handleDelete() {
+		// 中のチャンネルも一緒に消え、取り戻せないので、中にチャンネルがあれば確かめる
+		if (
+			channelCount > 0 &&
+			!window.confirm(
+				`カテゴリ「${category.name}」と、中のチャンネル ${channelCount} 個を削除します。よろしいですか？`,
+			)
+		) {
+			return;
+		}
+		void onDelete();
 	}
 
 	return (
@@ -332,7 +348,7 @@ function CategoryRow({
 				{hasDefault ? (
 					<span>既定のチャンネルが入っているので、削除できません。</span>
 				) : (
-					<button type="button" disabled={disabled} onClick={onDelete}>
+					<button type="button" disabled={disabled} onClick={handleDelete}>
 						削除（中のチャンネルも削除）
 					</button>
 				)}
