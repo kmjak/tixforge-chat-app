@@ -343,6 +343,35 @@ describe("createChannelService", () => {
 			).toEqual(["in-b", "top", "last"]);
 		});
 
+		it("並び順の保存の UPDATE は、カテゴリ・チャンネルの数によらず 2 回", async () => {
+			const { owner, serverId } = await setup();
+			const a = await createCategory(owner.userId, serverId, "a");
+			const b = await createCategory(owner.userId, serverId, "b");
+			const [general] = (await list(owner.userId, serverId)) ?? [];
+			if (!general) throw new Error("一般が無い");
+			const inA: string[] = [];
+			for (let i = 1; i <= 5; i++) {
+				inA.push((await createIn(owner.userId, serverId, `a${i}`, a)).id);
+			}
+			const queries = recordTransactionQueries();
+
+			const saved = await c().saveLayout(owner.userId, serverId, {
+				channels: [general.id],
+				categories: [
+					{ id: b, channels: [...inA].reverse() },
+					{ id: a, channels: [] },
+				],
+			});
+
+			expect(saved.ok).toBe(true);
+			expect(queries.filter((q) => /^\s*update/i.test(q))).toHaveLength(2);
+			expect(
+				names(
+					(await c().layout(owner.userId, serverId))?.categories[0]?.channels,
+				),
+			).toEqual(["a5", "a4", "a3", "a2", "a1"]);
+		});
+
 		it("並び順の保存は、今の集まりと違えば outdated、重複・形が違えば invalid、並びが上限を超えれば limit で、何も変えない", async () => {
 			const { owner, member, serverId } = await setup();
 			const k = await createCategory(owner.userId, serverId, "k");

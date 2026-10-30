@@ -381,23 +381,32 @@ export function createChannelService(db: AnyDb): ChannelService {
 				) {
 					return { ok: false, reason: "limit" } as const;
 				}
-				for (const [index, categoryId] of categoryIds.entries()) {
-					await tx
-						.update(channelCategories)
-						.set({ position: index + 1, updatedAt: sql`now()` })
-						.where(eq(channelCategories.id, categoryId));
+				// 往復を減らすため、カテゴリ・チャンネルそれぞれ 1 回の UPDATE で振り直す
+				// （servers の行をロックしている間を短くする）
+				if (categoryIds.length > 0) {
+					const rows = categoryIds.map(
+						(id, index) => sql`(${id}::uuid, ${index + 1}::int)`,
+					);
+					await tx.execute(sql`
+						update ${channelCategories}
+						set position = v.position, updated_at = now()
+						from (values ${sql.join(rows, sql`, `)}) as v(id, position)
+						where ${channelCategories.id} = v.id
+							and ${channelCategories.serverId} = ${serverId}`);
 				}
-				for (const group of groups) {
-					for (const [index, channelId] of group.channelIds.entries()) {
-						await tx
-							.update(channels)
-							.set({
-								categoryId: group.categoryId,
-								position: index + 1,
-								updatedAt: sql`now()`,
-							})
-							.where(eq(channels.id, channelId));
-					}
+				const channelRows = groups.flatMap((group) =>
+					group.channelIds.map(
+						(id, index) =>
+							sql`(${id}::uuid, ${group.categoryId}::uuid, ${index + 1}::int)`,
+					),
+				);
+				if (channelRows.length > 0) {
+					await tx.execute(sql`
+						update ${channels}
+						set category_id = v.category_id, position = v.position, updated_at = now()
+						from (values ${sql.join(channelRows, sql`, `)}) as v(id, category_id, position)
+						where ${channels.id} = v.id
+							and ${channels.serverId} = ${serverId}`);
 				}
 				return { ok: true, layout: await readLayout(tx, serverId) } as const;
 			}),
