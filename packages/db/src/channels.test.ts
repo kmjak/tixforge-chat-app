@@ -1,3 +1,4 @@
+import { createCategoryService } from "./categories";
 import { createChannelService } from "./channels";
 import { createProfileService } from "./profiles";
 import { user } from "./schema";
@@ -75,11 +76,21 @@ function recordTransactionQueries(): string[] {
 
 describe("createChannelService", () => {
 	const c = () => createChannelService(db);
+	/** 並びを平らにしたチャンネル（カテゴリに属さないもの → カテゴリの順） */
+	const list = async (userId: string, serverId: string) => {
+		const layout = await c().layout(userId, serverId);
+		return (
+			layout && [
+				...layout.channels,
+				...layout.categories.flatMap((category) => category.channels),
+			]
+		);
+	};
 
 	it("サーバーを作ると、既定のチャンネル「一般」が 1 つある", async () => {
 		const { owner, serverId } = await setup();
 
-		expect(await c().list(owner.userId, serverId)).toEqual([
+		expect(await list(owner.userId, serverId)).toEqual([
 			{ id: expect.any(String), name: "一般", isDefault: true },
 		]);
 	});
@@ -94,22 +105,20 @@ describe("createChannelService", () => {
 			ok: false,
 			reason: "limit",
 		});
-		const list = await c().list(owner.userId, serverId);
-		expect(list?.map((ch) => ch.name)).toEqual([
+		const all = await list(owner.userId, serverId);
+		expect(all?.map((ch) => ch.name)).toEqual([
 			"一般",
 			...Array.from({ length: 9 }, (_, i) => `c${i + 2}`),
 		]);
 
-		const second = list?.[1];
+		const second = all?.[1];
 		if (!second) throw new Error("チャンネルが無い");
 		expect(await c().remove(owner.userId, serverId, second.id)).toEqual({
 			ok: true,
 		});
 		expect((await c().create(owner.userId, serverId, "again")).ok).toBe(true);
 		// 新しいものは最後に並ぶ
-		expect((await c().list(owner.userId, serverId))?.at(-1)?.name).toBe(
-			"again",
-		);
+		expect((await list(owner.userId, serverId))?.at(-1)?.name).toBe("again");
 		// 削除したものは取得できないが、行は deleted_at 付きで残る
 		expect(await c().get(owner.userId, serverId, second.id)).toBeUndefined();
 		const { rows } = await db.$client.query<{ deleted: boolean }>(
@@ -121,7 +130,7 @@ describe("createChannelService", () => {
 
 	it("既定のチャンネルは名前を変えられるが、削除できない", async () => {
 		const { owner, serverId } = await setup();
-		const [general] = (await c().list(owner.userId, serverId)) ?? [];
+		const [general] = (await list(owner.userId, serverId)) ?? [];
 		if (!general) throw new Error("一般が無い");
 
 		expect(
@@ -139,10 +148,10 @@ describe("createChannelService", () => {
 	it("メンバーは見られるが操作できず（not-owner）、メンバーでない人は見られない（not-found）", async () => {
 		const { owner, member, serverId } = await setup();
 		const stranger = await insertUser("Stranger");
-		const [general] = (await c().list(owner.userId, serverId)) ?? [];
+		const [general] = (await list(owner.userId, serverId)) ?? [];
 		if (!general) throw new Error("一般が無い");
 
-		expect(await c().list(member.userId, serverId)).toHaveLength(1);
+		expect(await list(member.userId, serverId)).toHaveLength(1);
 		expect(await c().create(member.userId, serverId, "x")).toEqual({
 			ok: false,
 			reason: "not-owner",
@@ -156,7 +165,7 @@ describe("createChannelService", () => {
 			reason: "not-owner",
 		});
 
-		expect(await c().list(stranger.userId, serverId)).toBeUndefined();
+		expect(await list(stranger.userId, serverId)).toBeUndefined();
 		expect(
 			await c().get(stranger.userId, serverId, general.id),
 		).toBeUndefined();
@@ -164,7 +173,7 @@ describe("createChannelService", () => {
 			ok: false,
 			reason: "not-found",
 		});
-		expect(await c().list(owner.userId, "not-a-uuid")).toBeUndefined();
+		expect(await list(owner.userId, "not-a-uuid")).toBeUndefined();
 		expect(await c().get(owner.userId, serverId, "not-a-uuid")).toBeUndefined();
 	});
 
@@ -203,6 +212,10 @@ describe("createChannelService", () => {
 			"削除は、transaction の中で先に servers の行をロックしてからオーナーを確かめる",
 			"remove",
 		],
+		[
+			"並び順の保存は、transaction の中で先に servers の行をロックしてからオーナーを確かめる",
+			"saveLayout",
+		],
 	] as const)("%s", async (_, operation) => {
 		const { owner, serverId } = await setup();
 		const created = await c().create(owner.userId, serverId, "target");
@@ -213,10 +226,217 @@ describe("createChannelService", () => {
 			await c().create(owner.userId, serverId, "locked");
 		} else if (operation === "rename") {
 			await c().rename(owner.userId, serverId, created.channel.id, "renamed");
-		} else {
+		} else if (operation === "remove") {
 			await c().remove(owner.userId, serverId, created.channel.id);
+		} else {
+			await c().saveLayout(owner.userId, serverId, {
+				channels: [created.channel.id],
+				categories: [],
+			});
 		}
 
 		expect(queries[0]).toMatch(/select .* from "servers" .*for update/i);
+	});
+
+	describe("カテゴリと並び順", () => {
+		const cat = () => createCategoryService(db);
+
+		async function createCategory(
+			userId: string,
+			serverId: string,
+			name: string,
+		) {
+			const created = await cat().create(userId, serverId, name);
+			if (!created.ok) throw new Error("カテゴリを作れない");
+			return created.category.id;
+		}
+
+		async function createIn(
+			userId: string,
+			serverId: string,
+			name: string,
+			categoryId: string | null,
+		) {
+			const created = await c().create(userId, serverId, name, categoryId);
+			if (!created.ok)
+				throw new Error(`チャンネルを作れない：${created.reason}`);
+			return created.channel;
+		}
+
+		const names = (channels: { name: string }[] | undefined) =>
+			channels?.map((channel) => channel.name);
+
+		it("カテゴリを選んで作ると、その並びの末尾に入り、並びごとに 10 個まで", async () => {
+			const { owner, serverId } = await setup();
+			const k = await createCategory(owner.userId, serverId, "k");
+			for (let i = 1; i <= 10; i++) {
+				await createIn(owner.userId, serverId, `k${i}`, k);
+			}
+
+			expect(await c().create(owner.userId, serverId, "k11", k)).toEqual({
+				ok: false,
+				reason: "limit",
+			});
+			// カテゴリに属さない並びは別に数える
+			await createIn(owner.userId, serverId, "top", null);
+			const layout = await c().layout(owner.userId, serverId);
+			expect(names(layout?.channels)).toEqual(["一般", "top"]);
+			expect(names(layout?.categories[0]?.channels)).toEqual(
+				Array.from({ length: 10 }, (_, i) => `k${i + 1}`),
+			);
+		});
+
+		it("削除した・別のサーバーの・UUID の形でないカテゴリには作れない（invalid-category）", async () => {
+			const { owner, serverId } = await setup();
+			const other = await setup();
+			const removed = await createCategory(owner.userId, serverId, "gone");
+			await cat().remove(owner.userId, serverId, removed);
+			const others = await createCategory(
+				other.owner.userId,
+				other.serverId,
+				"other",
+			);
+
+			for (const categoryId of [removed, others, "not-a-uuid"]) {
+				expect(
+					await c().create(owner.userId, serverId, "x", categoryId),
+				).toEqual({ ok: false, reason: "invalid-category" });
+			}
+			expect(await list(owner.userId, serverId)).toHaveLength(1);
+		});
+
+		it("並び順の保存で、順を振り直し、カテゴリに入れる・出す・移すことができる", async () => {
+			const { owner, member, serverId } = await setup();
+			const a = await createCategory(owner.userId, serverId, "a");
+			const b = await createCategory(owner.userId, serverId, "b");
+			const [general] = (await list(owner.userId, serverId)) ?? [];
+			if (!general) throw new Error("一般が無い");
+			const top = await createIn(owner.userId, serverId, "top", null);
+			const inA = await createIn(owner.userId, serverId, "in-a", a);
+			const inB = await createIn(owner.userId, serverId, "in-b", b);
+
+			// top を a に入れ、in-a を出し、in-b を a に移し、カテゴリの順を b → a にする
+			const saved = await c().saveLayout(owner.userId, serverId, {
+				channels: [inA.id, general.id],
+				categories: [
+					{ id: b, channels: [] },
+					{ id: a, channels: [inB.id, top.id] },
+				],
+			});
+
+			const expected = {
+				channels: [inA, general],
+				categories: [
+					{ id: b, name: "b", channels: [] },
+					{ id: a, name: "a", channels: [inB, top] },
+				],
+			};
+			expect(saved).toEqual({ ok: true, layout: expected });
+			// メンバーにも同じ順で見える
+			expect(await c().layout(member.userId, serverId)).toEqual(expected);
+			// 新しく作ったものは、その並びの末尾に入る
+			await createIn(owner.userId, serverId, "last", a);
+			expect(
+				names(
+					(await c().layout(owner.userId, serverId))?.categories[1]?.channels,
+				),
+			).toEqual(["in-b", "top", "last"]);
+		});
+
+		it("並び順の保存の UPDATE は、カテゴリ・チャンネルの数によらず 2 回", async () => {
+			const { owner, serverId } = await setup();
+			const a = await createCategory(owner.userId, serverId, "a");
+			const b = await createCategory(owner.userId, serverId, "b");
+			const [general] = (await list(owner.userId, serverId)) ?? [];
+			if (!general) throw new Error("一般が無い");
+			const inA: string[] = [];
+			for (let i = 1; i <= 5; i++) {
+				inA.push((await createIn(owner.userId, serverId, `a${i}`, a)).id);
+			}
+			const queries = recordTransactionQueries();
+
+			const saved = await c().saveLayout(owner.userId, serverId, {
+				channels: [general.id],
+				categories: [
+					{ id: b, channels: [...inA].reverse() },
+					{ id: a, channels: [] },
+				],
+			});
+
+			expect(saved.ok).toBe(true);
+			expect(queries.filter((q) => /^\s*update/i.test(q))).toHaveLength(2);
+			expect(
+				names(
+					(await c().layout(owner.userId, serverId))?.categories[0]?.channels,
+				),
+			).toEqual(["a5", "a4", "a3", "a2", "a1"]);
+		});
+
+		it("並び順の保存は、今の集まりと違えば outdated、重複・形が違えば invalid、並びが上限を超えれば limit で、何も変えない", async () => {
+			const { owner, member, serverId } = await setup();
+			const k = await createCategory(owner.userId, serverId, "k");
+			const [general] = (await list(owner.userId, serverId)) ?? [];
+			if (!general) throw new Error("一般が無い");
+			const tops: string[] = [general.id];
+			for (let i = 2; i <= 10; i++) {
+				tops.push((await createIn(owner.userId, serverId, `t${i}`, null)).id);
+			}
+			const inK = await createIn(owner.userId, serverId, "in-k", k);
+			const before = await c().layout(owner.userId, serverId);
+
+			const cases = [
+				// 今あるチャンネルが足りない（別の画面で作った後の古い並び）
+				[{ channels: tops, categories: [{ id: k, channels: [] }] }, "outdated"],
+				// 今あるカテゴリが足りない
+				[{ channels: [...tops, inK.id], categories: [] }, "outdated"],
+				// 知らない id がある
+				[
+					{
+						channels: tops,
+						categories: [{ id: k, channels: [inK.id, crypto.randomUUID()] }],
+					},
+					"outdated",
+				],
+				// 同じ id が 2 回ある
+				[
+					{
+						channels: tops,
+						categories: [{ id: k, channels: [inK.id, inK.id] }],
+					},
+					"invalid",
+				],
+				// UUID の形でない
+				[
+					{ channels: tops, categories: [{ id: k, channels: ["x"] }] },
+					"invalid",
+				],
+				// カテゴリに属さない並びが 11 個になる
+				[
+					{
+						channels: [...tops, inK.id],
+						categories: [{ id: k, channels: [] }],
+					},
+					"limit",
+				],
+			] as const;
+			for (const [input, reason] of cases) {
+				expect(
+					await c().saveLayout(owner.userId, serverId, {
+						channels: [...input.channels],
+						categories: input.categories.map((category) => ({
+							id: category.id,
+							channels: [...category.channels],
+						})),
+					}),
+				).toEqual({ ok: false, reason });
+			}
+			expect(
+				await c().saveLayout(member.userId, serverId, {
+					channels: tops,
+					categories: [{ id: k, channels: [inK.id] }],
+				}),
+			).toEqual({ ok: false, reason: "not-owner" });
+			expect(await c().layout(owner.userId, serverId)).toEqual(before);
+		});
 	});
 });

@@ -16,6 +16,10 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
     ├── servers                   GET   サーバーの一覧          uri/get-api-servers.md
     │   │                         POST  サーバーの作成          uri/post-api-servers.md
     │   └── {serverId}            GET   サーバーの取得          uri/get-api-servers-{serverId}.md
+    │       ├── categories        POST  カテゴリの作成          uri/post-api-servers-{serverId}-categories.md
+    │       │   └── {categoryId}  PATCH カテゴリ名の変更        uri/patch-api-servers-{serverId}-categories-{categoryId}.md
+    │       │                     DELETE カテゴリの削除         uri/delete-api-servers-{serverId}-categories-{categoryId}.md
+    │       ├── channel-layout    PUT   並び順の保存            uri/put-api-servers-{serverId}-channel-layout.md
     │       ├── channels          GET   チャンネルの一覧        uri/get-api-servers-{serverId}-channels.md
     │       │   │                 POST  チャンネルの作成        uri/post-api-servers-{serverId}-channels.md
     │       │   └── {channelId}   GET   チャンネルの取得        uri/get-api-servers-{serverId}-channels-{channelId}.md
@@ -47,6 +51,10 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 - [`GET /api/servers`](uri/get-api-servers.md) — サーバーの一覧
 - [`POST /api/servers`](uri/post-api-servers.md) — サーバーの作成
 - [`GET /api/servers/{serverId}`](uri/get-api-servers-{serverId}.md) — サーバーの取得
+- [`POST /api/servers/{serverId}/categories`](uri/post-api-servers-{serverId}-categories.md) — カテゴリの作成
+- [`PATCH /api/servers/{serverId}/categories/{categoryId}`](uri/patch-api-servers-{serverId}-categories-{categoryId}.md) — カテゴリ名の変更
+- [`DELETE /api/servers/{serverId}/categories/{categoryId}`](uri/delete-api-servers-{serverId}-categories-{categoryId}.md) — カテゴリの削除
+- [`PUT /api/servers/{serverId}/channel-layout`](uri/put-api-servers-{serverId}-channel-layout.md) — 並び順の保存
 - [`GET /api/servers/{serverId}/channels`](uri/get-api-servers-{serverId}-channels.md) — チャンネルの一覧
 - [`POST /api/servers/{serverId}/channels`](uri/post-api-servers-{serverId}-channels.md) — チャンネルの作成
 - [`GET /api/servers/{serverId}/channels/{channelId}`](uri/get-api-servers-{serverId}-channels-{channelId}.md) — チャンネルの取得
@@ -65,7 +73,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 ## 命名と階層のルール
 - パスは英小文字の kebab-case にする。パスパラメータは `{camelCase}` と書く（例：`/api/servers/{serverId}`）。Hono の `:serverId` の書き方には合わせない。
 - アプリの API はすべて `/api` の下に置く。
-- リソースは複数形の名詞にし、中のものは親の下に置く（例：`/api/servers/{serverId}/channels`）。何をするかはメソッドで表す（取得 `GET`・作成 `POST`・更新 `PATCH`・削除 `DELETE`）。
+- リソースは複数形の名詞にし、中のものは親の下に置く（例：`/api/servers/{serverId}/channels`）。何をするかはメソッドで表す（取得 `GET`・作成 `POST`・更新 `PATCH`・削除 `DELETE`・全体の置き換え `PUT`）。
 - `/api/auth/*` は Better Auth が使うので、ほかの API に使わない。Better Auth のパスはライブラリが決めるので、上の命名に合わないものもある（`/api/auth/get-session` など）。
 - 例外：`GET /health` は監視用で、`/api` の外に置く（ログイン不要）。
 - 特に決めない限り、API はログインが必要にする。

@@ -130,7 +130,7 @@ erDiagram
 | [`server_members`](schema/server_members.md) | サーバーのメンバーと、サーバーで使うプロフィール | 実装済み（GT-000009） |
 | [`server_invites`](schema/server_invites.md) | サーバーの招待リンク | 実装済み（GT-000009） |
 | [`channels`](schema/channels.md) | チャンネル | 実装済み（GT-000011） |
-| [`channel_categories`](schema/channel_categories.md) | チャンネルのカテゴリ | 予定（GT-000012） |
+| [`channel_categories`](schema/channel_categories.md) | チャンネルのカテゴリ | 実装済み（GT-000012） |
 | [`friend_requests`](schema/friend_requests.md) | フレンド申請 | 予定（GT-000015） |
 | [`friendships`](schema/friendships.md) | フレンドと、相手に見せるプロフィール | 予定（GT-000015） |
 | [`friend_links`](schema/friend_links.md) | フレンドリンク | 予定（GT-000016） |

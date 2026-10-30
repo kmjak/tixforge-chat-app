@@ -196,8 +196,34 @@ export const serverInvites = pgTable("server_invites", {
 	createdAt: createdAt(),
 });
 
+/** チャンネルのカテゴリ（docs/context/schema/channel_categories.md） */
+export const channelCategories = pgTable(
+	"channel_categories",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		serverId: uuid("server_id")
+			.notNull()
+			.references(() => servers.id),
+		name: varchar("name", { length: 100 }).notNull(),
+		position: integer("position").notNull(),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+		deletedAt: timestamp("deleted_at", { withTimezone: true }),
+	},
+	(table) => [
+		index("channel_categories_server_id_position_idx").on(
+			table.serverId,
+			table.position,
+		),
+		check(
+			"channel_categories_name_length",
+			sql`char_length(${table.name}) between 1 and 100`,
+		),
+	],
+);
+
 /**
- * チャンネル（docs/context/schema/channels.md）。category_id はカテゴリ（GT-000012）で足す。
+ * チャンネル（docs/context/schema/channels.md）。position は同じ並び（同じカテゴリ、またはカテゴリに属さないもの）の中での順。
  * 既定のチャンネル「一般」はサーバーの作成と同じ transaction で作る（それより前のサーバーはマイグレーション 0005）
  */
 export const channels = pgTable(
@@ -207,6 +233,8 @@ export const channels = pgTable(
 		serverId: uuid("server_id")
 			.notNull()
 			.references(() => servers.id),
+		/** null ならカテゴリに属さない */
+		categoryId: uuid("category_id").references(() => channelCategories.id),
 		name: varchar("name", { length: 100 }).notNull(),
 		isDefault: boolean("is_default").notNull().default(false),
 		position: integer("position").notNull(),
@@ -215,7 +243,11 @@ export const channels = pgTable(
 		deletedAt: timestamp("deleted_at", { withTimezone: true }),
 	},
 	(table) => [
-		index("channels_server_id_position_idx").on(table.serverId, table.position),
+		index("channels_server_id_category_id_position_idx").on(
+			table.serverId,
+			table.categoryId,
+			table.position,
+		),
 		uniqueIndex("channels_server_id_default_idx")
 			.on(table.serverId)
 			.where(sql`${table.isDefault} = true`),

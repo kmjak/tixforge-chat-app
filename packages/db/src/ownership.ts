@@ -84,3 +84,24 @@ export async function findServerMembership(
 		);
 	return row ? { isOwner: row.ownerUserId === userId } : undefined;
 }
+
+/**
+ * オーナーだけができる操作の最初に呼ぶ。transaction の中で servers の行をロックしてから、
+ * userId がメンバーか・オーナーかを確かめる（docs/context/schema.md「オーナーだけができる操作」）。
+ * メンバーでない・存在しない・UUID の形でない id は not-found、メンバーだがオーナーでなければ not-owner
+ */
+export async function lockServerAsOwner(
+	tx: AnyDb,
+	userId: string,
+	serverId: string,
+): Promise<"ok" | "not-found" | "not-owner"> {
+	if (!isUuid(serverId)) {
+		return "not-found";
+	}
+	await lockServer(tx, serverId);
+	const membership = await findServerMembership(tx, userId, serverId);
+	if (!membership) {
+		return "not-found";
+	}
+	return membership.isOwner ? "ok" : "not-owner";
+}

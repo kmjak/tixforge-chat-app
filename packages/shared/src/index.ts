@@ -69,8 +69,24 @@ export type JoinServerResponse = { serverId: string; alreadyMember: boolean };
 /** サーバーのチャンネル（`/api/servers/{serverId}/channels` の API） */
 export type ChannelResponse = { id: string; name: string; isDefault: boolean };
 
-/** `GET /api/servers/{serverId}/channels` のレスポンス。作った順 */
-export type ChannelsResponse = { channels: ChannelResponse[] };
+/** チャンネルのカテゴリ（`/api/servers/{serverId}/categories` の API） */
+export type CategoryResponse = { id: string; name: string };
+
+/**
+ * サーバーのチャンネルの並び（`GET /api/servers/{serverId}/channels`・
+ * `PUT /api/servers/{serverId}/channel-layout` のレスポンス）。
+ * `channels` はカテゴリに属さないチャンネル。どれも並び順のとおり
+ */
+export type ChannelLayoutResponse = {
+	channels: ChannelResponse[];
+	categories: (CategoryResponse & { channels: ChannelResponse[] })[];
+};
+
+/** `PUT /api/servers/{serverId}/channel-layout` のリクエスト。今のカテゴリ・チャンネルをすべて並べる */
+export type ChannelLayoutRequest = {
+	channels: string[];
+	categories: { id: string; channels: string[] }[];
+};
 
 /** 4xx・5xx のレスポンスの共通形式（docs/context/uri.md「エラーの共通形式」） */
 export type ErrorResponse = {
@@ -88,6 +104,8 @@ export {
 	isPasswordLengthValid,
 	isStrongPassword,
 	isValidBio,
+	MAX_CATEGORIES,
+	MAX_CHANNELS_PER_CATEGORY,
 	MAX_CHANNELS_WITHOUT_CATEGORY,
 	MAX_PROFILES,
 	NAME_MAX_LENGTH,

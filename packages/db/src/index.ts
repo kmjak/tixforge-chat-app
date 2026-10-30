@@ -1,5 +1,9 @@
+export { type CategoryService, createCategoryService } from "./categories";
 export {
+	type Category,
 	type Channel,
+	type ChannelLayout,
+	type ChannelLayoutInput,
 	type ChannelService,
 	createChannelService,
 	DEFAULT_CHANNEL_NAME,

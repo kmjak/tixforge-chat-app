@@ -11,6 +11,7 @@ web（Next.js）の画面のパスの一覧。パスごとの詳細は `routes/`
 │   └── {profileId}  プロフィールの詳細   routes/profiles-{profileId}.md
 ├── servers       サーバーの一覧          routes/servers.md
 │   └── {serverId}   サーバー             routes/servers-{serverId}.md
+│       ├── channel-order  カテゴリと並び順  routes/servers-{serverId}-channel-order.md
 │       └── channels
 │           └── {channelId}  チャンネル   routes/servers-{serverId}-channels-{channelId}.md
 └── invites
@@ -25,6 +26,7 @@ web（Next.js）の画面のパスの一覧。パスごとの詳細は `routes/`
 - [`/profiles/{profileId}`](routes/profiles-{profileId}.md) — プロフィールの詳細
 - [`/servers`](routes/servers.md) — サーバーの一覧
 - [`/servers/{serverId}`](routes/servers-{serverId}.md) — サーバー
+- [`/servers/{serverId}/channel-order`](routes/servers-{serverId}-channel-order.md) — カテゴリと並び順
 - [`/servers/{serverId}/channels/{channelId}`](routes/servers-{serverId}-channels-{channelId}.md) — チャンネル
 - [`/invites/{token}`](routes/invites-{token}.md) — 招待
 
