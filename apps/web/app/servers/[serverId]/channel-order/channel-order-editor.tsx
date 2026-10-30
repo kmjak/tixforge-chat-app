@@ -318,11 +318,15 @@ function CategoryRow({
 	}
 
 	function handleDelete() {
-		// 中のチャンネルも一緒に消え、取り戻せないので、中にチャンネルがあれば確かめる
+		// 中のチャンネルも一緒に消え、取り戻せないので、必ず確かめる。画面の数は古いことがある
+		// （別のタブでチャンネルを足した後など）ので、数によらず確認を出す
+		const inside =
+			channelCount > 0
+				? `中のチャンネル（この画面では ${channelCount} 個）もすべて削除されます。`
+				: "中のチャンネルもすべて削除されます。";
 		if (
-			channelCount > 0 &&
 			!window.confirm(
-				`カテゴリ「${category.name}」と、中のチャンネル ${channelCount} 個を削除します。よろしいですか？`,
+				`カテゴリ「${category.name}」を削除します。${inside}よろしいですか？`,
 			)
 		) {
 			return;
