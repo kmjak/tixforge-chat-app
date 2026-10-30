@@ -23,6 +23,27 @@ function save(a: Account, api: string, body: unknown) {
 }
 
 describe("並び順", () => {
+	it("並び順の保存（PUT）は、web からのプリフライトで許可される", async () => {
+		const { api } = await setupServer(t);
+
+		const res = await t.app.request(`${api}/channel-layout`, {
+			method: "OPTIONS",
+			headers: {
+				Origin: "http://localhost:3000",
+				"Access-Control-Request-Method": "PUT",
+				"Access-Control-Request-Headers": "content-type",
+			},
+		});
+
+		expect(res.status).toBe(204);
+		expect(res.headers.get("Access-Control-Allow-Origin")).toBe(
+			"http://localhost:3000",
+		);
+		expect(
+			res.headers.get("Access-Control-Allow-Methods")?.split(","),
+		).toContain("PUT");
+	});
+
 	it("チャンネルをカテゴリに入れる・出す・移すことができる", async () => {
 		const { owner, api } = await setupServer(t);
 		const a = await createCategory(t, owner, api, "a");
