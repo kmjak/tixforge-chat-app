@@ -1,0 +1,48 @@
+/* メッセージの欄。高さを決めてスクロールさせる（一番上まで来たら古いものを読み込む） */
+.list {
+	height: 60vh;
+	overflow-y: auto;
+	border: 1px solid #ccc;
+	padding: 0 0.75rem;
+	margin: 0;
+	list-style: none;
+}
+
+.item {
+	padding: 0.5rem 0;
+}
+
+.header {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+/* 送り手の名前。幅を超えたら「…」で省略する */
+.name {
+	max-width: 16em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: bold;
+}
+
+.time {
+	flex-shrink: 0;
+	color: #666;
+	font-size: 0.85em;
+}
+
+.body {
+	margin: 0.25rem 0 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.notice {
+	color: #666;
+	font-size: 0.9em;
+	text-align: center;
+	padding: 0.5rem 0;
+}

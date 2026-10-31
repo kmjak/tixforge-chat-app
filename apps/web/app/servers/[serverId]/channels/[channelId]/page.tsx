@@ -1,6 +1,11 @@
-import type { ChannelResponse, ServerResponse } from "@chat-app/shared";
+import type {
+	ChannelResponse,
+	MessagesResponse,
+	ServerResponse,
+} from "@chat-app/shared";
 import Link from "next/link";
 import { loadFromServer } from "../../../../../lib/get-from-server";
+import { ChannelMessages } from "./channel-messages";
 import { ChannelSettings } from "./channel-settings";
 
 export default async function ChannelDetail({
@@ -12,12 +17,11 @@ export default async function ChannelDetail({
 	const serverPath = `/api/servers/${encodeURIComponent(serverId)}`;
 	const currentPath = `/servers/${encodeURIComponent(serverId)}/channels/${encodeURIComponent(channelId)}`;
 	// メンバーでない・存在しない・削除したチャンネルは server が 404 を返し、404 の画面になる
-	const [server, channel] = await Promise.all([
+	const channelPath = `${serverPath}/channels/${encodeURIComponent(channelId)}`;
+	const [server, channel, messages] = await Promise.all([
 		loadFromServer<ServerResponse>(serverPath, currentPath),
-		loadFromServer<ChannelResponse>(
-			`${serverPath}/channels/${encodeURIComponent(channelId)}`,
-			currentPath,
-		),
+		loadFromServer<ChannelResponse>(channelPath, currentPath),
+		loadFromServer<MessagesResponse>(`${channelPath}/messages`, currentPath),
 	]);
 
 	return (
@@ -29,10 +33,14 @@ export default async function ChannelDetail({
 				# {channel.name}
 				{channel.isDefault && "（既定）"}
 			</h1>
+			<ChannelMessages
+				serverId={server.id}
+				channelId={channel.id}
+				initial={messages}
+			/>
 			{server.isOwner && (
 				<ChannelSettings serverId={server.id} channel={channel} />
 			)}
-			{/* メッセージは GT-000014 で足す */}
 		</main>
 	);
 }
