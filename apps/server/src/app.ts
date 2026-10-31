@@ -1,6 +1,7 @@
 import type {
 	CategoryService,
 	ChannelService,
+	MessageService,
 	ProfileService,
 	ServerService,
 } from "@chat-app/db";
@@ -18,6 +19,7 @@ import type { AuthService, AuthUser } from "./auth";
 import { registerCategoryRoutes } from "./categories";
 import { registerChannelRoutes } from "./channels";
 import { ApiError } from "./errors";
+import { createMessageBroadcaster, registerMessageRoutes } from "./messages";
 import { registerProfileRoutes } from "./profiles";
 import type { RealtimeHub } from "./realtime";
 import { registerServerRoutes } from "./servers";
@@ -39,6 +41,8 @@ export type AppDeps = {
 	channels: ChannelService;
 	/** チャンネルのカテゴリの操作 */
 	categories: CategoryService;
+	/** チャンネルのメッセージ */
+	messages: MessageService;
 	/** WebSocket の配信の仕組み */
 	realtime: RealtimeHub;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
@@ -93,6 +97,7 @@ export function createApp({
 	servers,
 	channels,
 	categories,
+	messages,
 	realtime,
 	webOrigin,
 }: AppDeps) {
@@ -183,9 +188,11 @@ export function createApp({
 	});
 
 	registerProfileRoutes(app, profiles);
-	registerServerRoutes(app, servers);
+	const broadcastMessage = createMessageBroadcaster(messages, realtime);
+	registerServerRoutes(app, servers, broadcastMessage);
 	registerChannelRoutes(app, channels);
 	registerCategoryRoutes(app, categories);
+	registerMessageRoutes(app, { messages, broadcast: broadcastMessage });
 	registerWebSocketRoute(app, { realtime, webOrigin });
 
 	app.get("/health", async (c) => {

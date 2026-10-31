@@ -53,6 +53,8 @@ function parseProfileId(value: unknown): string {
 export function registerServerRoutes(
 	app: Hono<AppEnv>,
 	servers: ServerService,
+	/** 参加のメッセージを WebSocket で配る（createMessageBroadcaster） */
+	broadcastMessage: (messageId: number) => Promise<void>,
 ): void {
 	app.post("/api/servers", async (c) => {
 		const body = await readObject(c);
@@ -169,6 +171,9 @@ export function registerServerRoutes(
 			throw result.reason === "invalid-profile"
 				? invalidProfile()
 				: inviteError(result.reason);
+		}
+		if (result.joinMessageId !== undefined) {
+			await broadcastMessage(result.joinMessageId);
 		}
 		return c.json<JoinServerResponse>({
 			serverId: result.serverId,

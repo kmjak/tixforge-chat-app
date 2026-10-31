@@ -2,6 +2,7 @@ import {
 	createCategoryService,
 	createChannelService,
 	createDb,
+	createMessageService,
 	createProfileService,
 	createServerService,
 	listRoomMemberIds,
@@ -36,6 +37,7 @@ const app = createApp({
 	servers: createServerService(db),
 	channels: createChannelService(db),
 	categories: createCategoryService(db),
+	messages: createMessageService(db),
 	realtime,
 	webOrigin: env.webOrigin,
 });

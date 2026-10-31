@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import {
 	createCategoryService,
 	createChannelService,
+	createMessageService,
 	createProfileService,
 	createServerService,
 	listRoomMemberIds,
@@ -75,6 +76,7 @@ export async function setupTestApp({
 		servers: createServerService(db),
 		channels: createChannelService(db),
 		categories: createCategoryService(db),
+		messages: createMessageService(db),
 		realtime,
 		webOrigin: WEB_ORIGIN,
 	});
