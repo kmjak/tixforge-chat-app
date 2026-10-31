@@ -10,7 +10,7 @@
 | パスパラメータ | なし |
 | リクエスト | なし |
 | query | なし |
-| 呼び出し元 URL | [`/`](../routes/root.md)・[`/sign-in`](../routes/sign-in.md)・[`/sign-up`](../routes/sign-up.md)・[`/home`](../routes/home.md) |
+| 呼び出し元 URL | [`/`](../routes/root.md)・[`/sign-in`](../routes/sign-in.md)・[`/sign-up`](../routes/sign-up.md)・[`/home`](../routes/home.md)・ログイン後のすべての画面（WebSocket がつながらずに閉じたとき。[ws.md](../ws.md#接続を閉じるとき)） |
 
 ログインしているかと、ログインしているアカウントを返す。web はこれでログイン状態を判定する。Better Auth が提供する。
 
