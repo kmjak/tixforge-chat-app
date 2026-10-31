@@ -88,8 +88,11 @@ export type ChannelLayoutRequest = {
 	categories: { id: string; channels: string[] }[];
 };
 
-/** メッセージの送り手。見る人に見せるプロフィール（アカウントの id は含めない） */
-export type MessageSender = { id: string; name: string };
+/**
+ * メッセージの送り手。見る人に見せるプロフィール（アカウントの id は含めない）。
+ * サーバーを退出した人は、id が null で、name に退出したときの名前と「（退出済み）」
+ */
+export type MessageSender = { id: string | null; name: string };
 
 /** メッセージ（`/api/servers/{serverId}/channels/{channelId}/messages` の API と、`message.created` のイベント） */
 export type MessageResponse = {

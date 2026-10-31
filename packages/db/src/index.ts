@@ -18,6 +18,12 @@ export {
 } from "./client";
 export { pingDb } from "./health";
 export {
+	createMessageService,
+	type Message,
+	type MessageSender,
+	type MessageService,
+} from "./messages";
+export {
 	type CreateProfileResult,
 	createProfileService,
 	type DeleteProfileResult,
