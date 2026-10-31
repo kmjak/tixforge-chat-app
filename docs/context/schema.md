@@ -137,7 +137,7 @@ erDiagram
 | [`dms`](schema/dms.md) | DM | 予定（GT-000017） |
 | [`group_dms`](schema/group_dms.md) | グループ DM | 予定（GT-000018） |
 | [`group_dm_members`](schema/group_dm_members.md) | グループ DM の招待・メンバーと、グループ DM で使うプロフィール | 予定（GT-000018） |
-| [`messages`](schema/messages.md) | メッセージ（チャンネル・DM・グループ DM） | 予定（GT-000014） |
+| [`messages`](schema/messages.md) | メッセージ（チャンネル・DM・グループ DM） | 実装済み（GT-000014。DM・グループ DM の列は GT-000017・GT-000018） |
 
 ## ドメイン概念とテーブル
 [overview.md](overview.md) の概念が、どのテーブルで表されるか。
