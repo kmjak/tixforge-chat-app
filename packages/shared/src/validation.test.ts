@@ -4,6 +4,7 @@ import {
 	isStrongPassword,
 	isValidBio,
 	normalizeChannelName,
+	normalizeMessageBody,
 	normalizeName,
 	normalizeServerName,
 } from "./validation";
@@ -157,5 +158,28 @@ describe("normalizeChannelName", () => {
 		["ハングルの初声・中声のフィラー", "\u115F\u1160"],
 	])("%s は通らない", (_, name) => {
 		expect(normalizeChannelName(name)).toBeNull();
+	});
+});
+
+describe("normalizeMessageBody", () => {
+	it.each([
+		["前後の空白を取り除く", "  こんにちは\n", "こんにちは"],
+		["中の改行と空白は残す", "1 行目\n 2 行目", "1 行目\n 2 行目"],
+		[
+			"2000 文字（絵文字もコードポイントで 1 文字）",
+			"😀".repeat(2000),
+			"😀".repeat(2000),
+		],
+	])("%s", (_, body, expected) => {
+		expect(normalizeMessageBody(body)).toBe(expected);
+	});
+
+	it.each([
+		["空", ""],
+		["空白だけ", " \n\t "],
+		["2001 文字", "あ".repeat(2001)],
+		["U+0000 を含む", "a\u0000b"],
+	])("%s なら null", (_, body) => {
+		expect(normalizeMessageBody(body)).toBeNull();
 	});
 });
