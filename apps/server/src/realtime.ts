@@ -4,6 +4,18 @@ import {
 	type WsServerEvent,
 } from "@chat-app/shared";
 import type { WSContext } from "hono/ws";
+import { WebSocketServer } from "ws";
+
+/**
+ * ブラウザから受け取るメッセージの上限（バイト）。ブラウザからの送信は使わないので小さくし、
+ * 大きなフレームでメモリを使わせないようにする（超えると ws が接続を閉じる）
+ */
+export const WS_MAX_PAYLOAD = 4096;
+
+/** serve の websocket に渡す WebSocket の server（upgrade は serve が受ける） */
+export function createWebSocketServer(): WebSocketServer {
+	return new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD });
+}
 
 /** 生存確認（ping）とセッションの確かめ直しの間隔 */
 export const PING_INTERVAL_MS = 30_000;
@@ -30,10 +42,15 @@ export type RealtimeHub = {
 	disconnect: (ws: WSContext) => void;
 	/** 部屋の今の参加者の接続すべてに、イベントを送る */
 	publish: (room: WsRoom, event: WsServerEvent) => Promise<void>;
-	/** セッションの接続を、すべて WS_CLOSE_SESSION_ENDED で閉じる（サインアウト） */
-	closeSession: (sessionId: string) => void;
 	/** 生存確認：pong の返らない接続を切り、ping を送り、セッションが無効な接続を閉じる */
 	checkConnections: () => Promise<void>;
+	/**
+	 * アカウントの接続のセッションを、その場で確かめ直す（セッションの失効・パスワードの変更などの後）。
+	 * 無効なセッションの接続は WS_CLOSE_SESSION_ENDED で閉じる
+	 */
+	revalidateUser: (userId: string) => Promise<void>;
+	/** 今の接続の数（テストで、閉じた接続が外れたかを確かめる） */
+	connectionCount: () => number;
 	/** checkConnections を PING_INTERVAL_MS ごとに動かす */
 	start: () => void;
 	stop: () => void;
@@ -70,6 +87,38 @@ export function createRealtimeHub({
 		entry.ws.close(WS_CLOSE_SESSION_ENDED, "session ended");
 	}
 
+	/**
+	 * 接続のセッションがまだ有効かを確かめ、無効なら閉じる。同じセッションは 1 回だけ、並べて確かめる。
+	 * 確かめるのに失敗したセッション（DB の一時的な失敗など）は、その回は閉じない
+	 */
+	async function revalidate(targets: Entry[]) {
+		const sessions = new Map<string, Headers>();
+		for (const entry of targets) {
+			sessions.set(entry.sessionId, entry.headers);
+		}
+		const ended = new Set<string>();
+		await Promise.all(
+			[...sessions].map(async ([sessionId, headers]) => {
+				try {
+					const session = await getSession(headers);
+					if (session?.sessionId !== sessionId) {
+						ended.add(sessionId);
+					}
+				} catch (error) {
+					console.error(
+						"WebSocket のセッションを確かめられませんでした",
+						error,
+					);
+				}
+			}),
+		);
+		for (const entry of targets) {
+			if (ended.has(entry.sessionId) && entries.has(entry.ws)) {
+				endSession(entry);
+			}
+		}
+	}
+
 	const hub: RealtimeHub = {
 		connect: (connection) => {
 			const entry: Entry = { ...connection, alive: true };
@@ -93,16 +142,8 @@ export function createRealtimeHub({
 			}
 		},
 
-		closeSession: (sessionId) => {
-			for (const entry of [...entries.values()]) {
-				if (entry.sessionId === sessionId) {
-					endSession(entry);
-				}
-			}
-		},
-
 		checkConnections: async () => {
-			const checked = new Map<string, Promise<boolean>>();
+			const checking: Entry[] = [];
 			for (const entry of [...entries.values()]) {
 				const raw = entry.ws.raw as RawSocket | undefined;
 				if (!entry.alive) {
@@ -113,19 +154,17 @@ export function createRealtimeHub({
 				}
 				entry.alive = false;
 				raw?.ping();
-				// 同じセッションの接続は 1 回だけ確かめる
-				let valid = checked.get(entry.sessionId);
-				if (!valid) {
-					valid = getSession(entry.headers).then(
-						(session) => session?.sessionId === entry.sessionId,
-					);
-					checked.set(entry.sessionId, valid);
-				}
-				if (!(await valid)) {
-					endSession(entry);
-				}
+				checking.push(entry);
 			}
+			await revalidate(checking);
 		},
+
+		revalidateUser: (userId) =>
+			revalidate(
+				[...entries.values()].filter((entry) => entry.userId === userId),
+			),
+
+		connectionCount: () => entries.size,
 
 		start: () => {
 			timer ??= setInterval(() => {

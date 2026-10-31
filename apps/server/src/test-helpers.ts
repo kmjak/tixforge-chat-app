@@ -13,10 +13,13 @@ import {
 import { createTestDb, type TestDb } from "@chat-app/db/testing";
 import { WS_PATH } from "@chat-app/shared";
 import { serve } from "@hono/node-server";
-import { WebSocketServer } from "ws";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
-import { createRealtimeHub, type RealtimeHub } from "./realtime";
+import {
+	createRealtimeHub,
+	createWebSocketServer,
+	type RealtimeHub,
+} from "./realtime";
 
 export const WEB_ORIGIN = "http://localhost:3000";
 export const PASSWORD = "Passw0rd!";
@@ -109,7 +112,7 @@ export async function setupTestApp({
 					{
 						fetch: app.fetch,
 						port: 0,
-						websocket: { server: new WebSocketServer({ noServer: true }) },
+						websocket: { server: createWebSocketServer() },
 					},
 					(info: AddressInfo) => {
 						resolve(`ws://localhost:${info.port}${WS_PATH}`);

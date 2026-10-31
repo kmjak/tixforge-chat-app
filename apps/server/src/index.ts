@@ -8,12 +8,11 @@ import {
 	pingDb,
 } from "@chat-app/db";
 import { serve } from "@hono/node-server";
-import { WebSocketServer } from "ws";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
 import { readEnv } from "./env";
 import { parsePort } from "./port";
-import { createRealtimeHub } from "./realtime";
+import { createRealtimeHub, createWebSocketServer } from "./realtime";
 
 const port = parsePort(process.env.PORT);
 const env = readEnv(process.env);
@@ -46,7 +45,7 @@ serve(
 	{
 		fetch: app.fetch,
 		port,
-		websocket: { server: new WebSocketServer({ noServer: true }) },
+		websocket: { server: createWebSocketServer() },
 	},
 	(info) => {
 		console.log(`server listening on http://localhost:${info.port}`);

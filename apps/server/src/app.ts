@@ -51,6 +51,15 @@ export type AppDeps = {
  */
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
 
+/**
+ * /api/auth/* への POST のうち、成功しても WebSocket の接続を確かめ直さなくてよいもの
+ * （セッションを作るだけで、今のセッションを無効にしない）
+ */
+const NO_REVALIDATE_AUTH_PATHS = new Set([
+	"/api/auth/sign-up/email",
+	"/api/auth/sign-in/email",
+]);
+
 /** HTTPException のステータスに対応するエラーの code（docs/context/uri.md「エラーの共通形式」） */
 const ERROR_CODES: Record<number, string> = {
 	400: "BAD_REQUEST",
@@ -128,14 +137,15 @@ export function createApp({
 	});
 
 	app.on(["GET", "POST"], "/api/auth/*", async (c) => {
-		if (c.req.method !== "POST" || c.req.path !== "/api/auth/sign-out") {
+		if (c.req.method !== "POST" || NO_REVALIDATE_AUTH_PATHS.has(c.req.path)) {
 			return auth.handler(c.req.raw);
 		}
-		// サインアウトしたら、そのセッションの WebSocket の接続をすぐに切る
+		// サインアウト・セッションの失効・パスワードの変更などが成功したら、そのアカウントの
+		// WebSocket の接続のセッションを、その場で確かめ直す（無効になったものはすぐに切る）
 		const session = await auth.getSession(c.req.raw.headers);
 		const res = await auth.handler(c.req.raw);
 		if (session && res.ok) {
-			realtime.closeSession(session.sessionId);
+			await realtime.revalidateUser(session.user.id);
 		}
 		return res;
 	});

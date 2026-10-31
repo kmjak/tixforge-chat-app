@@ -13,7 +13,7 @@ import {
 	login,
 	setupServer,
 } from "./channel-fixtures";
-import { createRealtimeHub } from "./realtime";
+import { createRealtimeHub, WS_MAX_PAYLOAD } from "./realtime";
 import {
 	cookieFrom,
 	PASSWORD,
@@ -149,6 +149,32 @@ describe("WebSocket の接続", () => {
 		expect(client.events).toEqual([{ type: "ready" }]);
 	});
 
+	it("ブラウザ側から閉じると、server の接続の一覧から外れる", async () => {
+		const account = await login(t, "Close");
+		const before = t.realtime.connectionCount();
+		const client = await connect(account.cookie);
+		expect(t.realtime.connectionCount()).toBe(before + 1);
+
+		client.ws.close();
+		await client.closed;
+		// server 側の close の処理を待つ
+		for (let i = 0; i < 50 && t.realtime.connectionCount() > before; i++) {
+			await new Promise((resolve) => setImmediate(resolve));
+		}
+
+		expect(t.realtime.connectionCount()).toBe(before);
+	});
+
+	it("上限より大きいメッセージを送ると、接続が切られる", async () => {
+		const account = await login(t, "Large");
+		const client = await connect(account.cookie);
+
+		client.ws.send("x".repeat(WS_MAX_PAYLOAD + 1));
+
+		// 1009：メッセージが大きすぎる
+		expect(await client.closed).toBe(1009);
+	});
+
 	it("未ログイン・違う Origin では接続できない", async () => {
 		const account = await login(t, "Rejected");
 
@@ -279,6 +305,21 @@ describe("セッションと生存確認", () => {
 		expect(b.ws.readyState).toBe(WebSocket.OPEN);
 	});
 
+	it("ほかのセッションを失効させると、そのセッションの接続がすぐに 4001 で切れる", async () => {
+		const { first, second } = await twoSessions();
+		const a = await connect(first);
+		const b = await connect(second);
+
+		const res = await t.request("POST", "/api/auth/revoke-other-sessions", {
+			cookie: second,
+			body: {},
+		});
+
+		expect(res.status).toBe(200);
+		expect(await a.closed).toBe(WS_CLOSE_SESSION_ENDED);
+		expect(b.ws.readyState).toBe(WebSocket.OPEN);
+	});
+
 	it("セッションが無効になると、生存確認で 4001 で切れる", async () => {
 		const { first, second } = await twoSessions();
 		const a = await connect(first);
@@ -297,6 +338,53 @@ describe("セッションと生存確認", () => {
 });
 
 describe("createRealtimeHub の生存確認", () => {
+	function fakeWs() {
+		return {
+			raw: { ping: jest.fn(), terminate: jest.fn(), on: jest.fn() },
+			readyState: 1,
+			send: jest.fn(),
+			close: jest.fn(),
+		} as unknown as WSContext & { close: jest.Mock };
+	}
+
+	it("セッションを確かめるのに失敗しても、ほかの接続の確認は続け、失敗した接続は切らない", async () => {
+		const hub = createRealtimeHub({
+			listRoomMemberIds: async () => [],
+			getSession: async (headers) => {
+				const id = headers.get("cookie");
+				if (id === "broken") throw new Error("DB のタイムアウト");
+				return id === "valid" ? { sessionId: "valid" } : null;
+			},
+		});
+		const broken = fakeWs();
+		const valid = fakeWs();
+		const revoked = fakeWs();
+		for (const [ws, id] of [
+			[broken, "broken"],
+			[valid, "valid"],
+			[revoked, "revoked"],
+		] as const) {
+			hub.connect({
+				userId: "u1",
+				sessionId: id,
+				headers: new Headers({ cookie: id }),
+				ws,
+			});
+		}
+		const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+		await hub.checkConnections();
+
+		expect(broken.close).not.toHaveBeenCalled();
+		expect(valid.close).not.toHaveBeenCalled();
+		expect(revoked.close).toHaveBeenCalledWith(
+			WS_CLOSE_SESSION_ENDED,
+			"session ended",
+		);
+		expect(hub.connectionCount()).toBe(2);
+		errorSpy.mockRestore();
+	});
+
 	it("ping に pong が返らない接続は、次の生存確認で切る", async () => {
 		const hub = createRealtimeHub({
 			listRoomMemberIds: async () => [],
