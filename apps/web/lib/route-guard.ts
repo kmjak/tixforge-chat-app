@@ -3,6 +3,11 @@ import { resolveRedirect, withRedirect } from "./redirect";
 /** ログインせずに開ける画面。これ以外の画面はすべてログインが必要（docs/context/routes.md） */
 const PUBLIC_PATHS = new Set(["/", "/sign-in", "/sign-up"]);
 
+/** ログインせずに開ける画面か（ログイン済みなら、これらの画面は別の画面へ移る） */
+export function isPublicPath(pathname: string): boolean {
+	return PUBLIC_PATHS.has(pathname);
+}
+
 /** サインイン・サインアップの画面（ログイン済みなら redirect の先へ移す） */
 const AUTH_PATHS = new Set(["/sign-in", "/sign-up"]);
 
