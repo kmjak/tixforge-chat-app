@@ -8,6 +8,7 @@ import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
 import { ApiError, readJson } from "./errors";
+import type { RealtimeHub } from "./realtime";
 
 /** /health のテストでは認証を使わない */
 const deps = {
@@ -28,6 +29,7 @@ const deps = {
 	servers: {} as ServerService,
 	channels: {} as ChannelService,
 	categories: {} as CategoryService,
+	realtime: {} as RealtimeHub,
 	webOrigin: "http://localhost:3000",
 };
 
@@ -71,6 +73,7 @@ describe("エラーの共通形式", () => {
 				...deps.auth,
 				getSession: async () => ({
 					user: { id: "u1", email: "u1@example.com" },
+					sessionId: "s1",
 				}),
 			},
 		});

@@ -19,10 +19,12 @@ import { registerCategoryRoutes } from "./categories";
 import { registerChannelRoutes } from "./channels";
 import { ApiError } from "./errors";
 import { registerProfileRoutes } from "./profiles";
+import type { RealtimeHub } from "./realtime";
 import { registerServerRoutes } from "./servers";
+import { registerWebSocketRoute } from "./ws";
 
-/** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
-export type AppEnv = { Variables: { user: AuthUser } };
+/** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user と sessionId が必ずある */
+export type AppEnv = { Variables: { user: AuthUser; sessionId: string } };
 
 export type AppDeps = {
 	/** DB に接続できれば true を返す */
@@ -37,6 +39,8 @@ export type AppDeps = {
 	channels: ChannelService;
 	/** チャンネルのカテゴリの操作 */
 	categories: CategoryService;
+	/** WebSocket の配信の仕組み */
+	realtime: RealtimeHub;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -76,6 +80,7 @@ export function createApp({
 	servers,
 	channels,
 	categories,
+	realtime,
 	webOrigin,
 }: AppDeps) {
 	const app = new Hono<AppEnv>();
@@ -118,10 +123,22 @@ export function createApp({
 			);
 		}
 		c.set("user", session.user);
+		c.set("sessionId", session.sessionId);
 		await next();
 	});
 
-	app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+	app.on(["GET", "POST"], "/api/auth/*", async (c) => {
+		if (c.req.method !== "POST" || c.req.path !== "/api/auth/sign-out") {
+			return auth.handler(c.req.raw);
+		}
+		// サインアウトしたら、そのセッションの WebSocket の接続をすぐに切る
+		const session = await auth.getSession(c.req.raw.headers);
+		const res = await auth.handler(c.req.raw);
+		if (session && res.ok) {
+			realtime.closeSession(session.sessionId);
+		}
+		return res;
+	});
 
 	app.get("/api/me", async (c) => {
 		const user = c.get("user");
@@ -143,6 +160,7 @@ export function createApp({
 	registerServerRoutes(app, servers);
 	registerChannelRoutes(app, channels);
 	registerCategoryRoutes(app, categories);
+	registerWebSocketRoute(app, { realtime, webOrigin });
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {
