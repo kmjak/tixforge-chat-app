@@ -1,7 +1,7 @@
 "use client";
 
 import type { WsServerEvent } from "@chat-app/shared";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
 	createContext,
 	type ReactNode,
@@ -12,6 +12,7 @@ import {
 } from "react";
 import { SERVER_URL } from "../../lib/api";
 import {
+	checkBrowserSession,
 	createRealtimeClient,
 	type RealtimeStatus,
 	realtimeUrl,
@@ -35,7 +36,6 @@ export function useRealtimeEvents(): (listener: Listener) => () => void {
  */
 export function RealtimeProvider({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
-	const router = useRouter();
 	const connect = !isPublicPath(pathname);
 	const [status, setStatus] = useState<RealtimeStatus>("connecting");
 	const listeners = useRef(new Set<Listener>());
@@ -58,12 +58,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 					listener(event);
 				}
 			},
-			// サインアウト・セッションの失効：読み込み直すと、proxy がサインインの画面へ移す
-			onSessionEnded: () => router.refresh(),
+			// サインアウト・セッションの失効：画面全体を読み込み直すと、proxy がサインインの画面へ移す
+			onSessionEnded: () => window.location.reload(),
+			checkSession: () => checkBrowserSession(SERVER_URL),
 		});
 		client.start();
 		return () => client.stop();
-	}, [connect, router]);
+	}, [connect]);
 
 	return (
 		<RealtimeContext.Provider value={subscribe}>

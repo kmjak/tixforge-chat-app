@@ -31,14 +31,40 @@ export function realtimeUrl(serverUrl: string): string {
 }
 
 /**
+ * ブラウザの cookie で GET /api/auth/get-session を呼び、セッションが有効かを返す。
+ * server に届かない・想定外の応答なら、分からないので null
+ */
+export async function checkBrowserSession(
+	serverUrl: string,
+	fetchFn: typeof fetch = fetch,
+): Promise<boolean | null> {
+	try {
+		const res = await fetchFn(`${serverUrl}/api/auth/get-session`, {
+			credentials: "include",
+			cache: "no-store",
+		});
+		if (!res.ok) {
+			return null;
+		}
+		const body: unknown = await res.json();
+		return typeof body === "object" && body !== null && "session" in body;
+	} catch {
+		return null;
+	}
+}
+
+/**
  * server と 1 本の WebSocket をつなぎ続ける（docs/context/ws.md）。切れたら、待ち時間を 1 秒から
- * 倍にして（30 秒まで）再接続する。WS_CLOSE_SESSION_ENDED で閉じられたら再接続せず onSessionEnded を呼ぶ
+ * 倍にして（30 秒まで）再接続する。WS_CLOSE_SESSION_ENDED で閉じられたら再接続せず onSessionEnded を呼ぶ。
+ * つながらずに閉じたとき（未ログインの 401 も、ブラウザには区別できずにこう見える）は、checkSession で
+ * セッションを確かめ、無効なら同じく止める。分からない（server に届かない）なら再接続を続ける
  */
 export function createRealtimeClient({
 	url,
 	onStatus,
 	onEvent,
 	onSessionEnded,
+	checkSession,
 	createSocket = (to) => new WebSocket(to) as unknown as SocketLike,
 	setTimer = (callback, ms) => setTimeout(callback, ms),
 	clearTimer = (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
@@ -47,6 +73,7 @@ export function createRealtimeClient({
 	onStatus: (status: RealtimeStatus) => void;
 	onEvent: (event: WsServerEvent) => void;
 	onSessionEnded: () => void;
+	checkSession: () => Promise<boolean | null>;
 	createSocket?: (url: string) => SocketLike;
 	setTimer?: (callback: () => void, ms: number) => unknown;
 	clearTimer?: (timer: unknown) => void;
@@ -60,7 +87,9 @@ export function createRealtimeClient({
 		timer = null;
 		const current = createSocket(url);
 		socket = current;
+		let opened = false;
 		current.onopen = () => {
+			opened = true;
 			delay = RECONNECT_MIN_MS;
 			onStatus("open");
 		};
@@ -79,15 +108,37 @@ export function createRealtimeClient({
 			}
 			socket = null;
 			if (code === WS_CLOSE_SESSION_ENDED) {
-				stopped = true;
-				onStatus("ended");
-				onSessionEnded();
+				end();
 				return;
 			}
 			onStatus("reconnecting");
-			timer = setTimer(open, delay);
-			delay = Math.min(delay * 2, RECONNECT_MAX_MS);
+			if (opened) {
+				scheduleReconnect();
+				return;
+			}
+			// つながらずに閉じた：セッションが無効になっていないか確かめてから再接続する
+			void checkSession().then((valid) => {
+				if (stopped || socket !== null || timer !== null) {
+					return;
+				}
+				if (valid === false) {
+					end();
+					return;
+				}
+				scheduleReconnect();
+			});
 		};
+	}
+
+	function scheduleReconnect() {
+		timer = setTimer(open, delay);
+		delay = Math.min(delay * 2, RECONNECT_MAX_MS);
+	}
+
+	function end() {
+		stopped = true;
+		onStatus("ended");
+		onSessionEnded();
 	}
 
 	return {
