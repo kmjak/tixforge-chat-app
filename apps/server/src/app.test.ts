@@ -221,13 +221,14 @@ describe("/api/auth/* の後の WebSocket の確かめ直し", () => {
 	}) {
 		const handler = jest.fn(async () => new Response("{}", { status: 200 }));
 		const revalidate = jest.fn(revalidateUser);
+		const readSession = jest.fn(getSession);
 		const app = createApp({
 			...deps,
 			pingDb: async () => true,
-			auth: { handler, getSession: jest.fn(getSession) },
+			auth: { handler, getSession: readSession },
 			realtime: { revalidateUser: revalidate } as unknown as RealtimeHub,
 		});
-		return { app, handler, revalidate };
+		return { app, handler, revalidate, readSession };
 	}
 
 	const loggedIn = async () => ({
@@ -245,39 +246,52 @@ describe("/api/auth/* の後の WebSocket の確かめ直し", () => {
 	});
 
 	it("セッションを無効にしない操作では、確かめ直さない（セッションも読まない）", async () => {
-		const { app, revalidate } = appWith({ getSession: loggedIn });
+		const { app, revalidate, readSession } = appWith({ getSession: loggedIn });
 
 		const res = await app.request("/api/auth/update-user", { method: "POST" });
 
 		expect(res.status).toBe(200);
 		expect(revalidate).not.toHaveBeenCalled();
+		expect(readSession).not.toHaveBeenCalled();
 	});
 
-	it("確かめ直しの前後で失敗しても、Better Auth の応答をそのまま返す", async () => {
+	it("確かめ直しの前にセッションを読めなくても、Better Auth の応答をそのまま返す", async () => {
 		const log = jest.spyOn(console, "error").mockImplementation(() => {});
-		const broken = appWith({
+		const { app, handler, revalidate } = appWith({
 			getSession: async () => {
 				throw new Error("DB のタイムアウト");
 			},
 		});
-		const res = await broken.app.request("/api/auth/sign-out", {
-			method: "POST",
-		});
-		expect(res.status).toBe(200);
-		expect(broken.handler).toHaveBeenCalled();
-		expect(broken.revalidate).not.toHaveBeenCalled();
 
-		const failing = appWith({
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(handler).toHaveBeenCalled();
+		expect(revalidate).not.toHaveBeenCalled();
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining("セッションの確認に失敗"),
+			expect.any(Error),
+		);
+		log.mockRestore();
+	});
+
+	it("確かめ直しに失敗しても、Better Auth の応答をそのまま返す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const { app, revalidate } = appWith({
 			getSession: loggedIn,
 			revalidateUser: async () => {
 				throw new Error("DB のタイムアウト");
 			},
 		});
-		const res2 = await failing.app.request("/api/auth/sign-out", {
-			method: "POST",
-		});
-		expect(res2.status).toBe(200);
-		expect(log).toHaveBeenCalled();
+
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).toHaveBeenCalledWith("u1");
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining("接続の確かめ直しに失敗"),
+			expect.any(Error),
+		);
 		log.mockRestore();
 	});
 });
