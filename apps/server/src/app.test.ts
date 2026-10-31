@@ -207,3 +207,77 @@ describe("エラーの共通形式", () => {
 		expect(log).toHaveBeenCalled();
 	});
 });
+
+describe("/api/auth/* の後の WebSocket の確かめ直し", () => {
+	function appWith({
+		getSession,
+		revalidateUser = async () => {},
+	}: {
+		getSession: () => Promise<{
+			user: { id: string; email: string };
+			sessionId: string;
+		} | null>;
+		revalidateUser?: (userId: string) => Promise<void>;
+	}) {
+		const handler = jest.fn(async () => new Response("{}", { status: 200 }));
+		const revalidate = jest.fn(revalidateUser);
+		const app = createApp({
+			...deps,
+			pingDb: async () => true,
+			auth: { handler, getSession: jest.fn(getSession) },
+			realtime: { revalidateUser: revalidate } as unknown as RealtimeHub,
+		});
+		return { app, handler, revalidate };
+	}
+
+	const loggedIn = async () => ({
+		user: { id: "u1", email: "u1@example.com" },
+		sessionId: "s1",
+	});
+
+	it("セッションを無効にしうる操作が成功したら、そのアカウントの接続を確かめ直す", async () => {
+		const { app, revalidate } = appWith({ getSession: loggedIn });
+
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).toHaveBeenCalledWith("u1");
+	});
+
+	it("セッションを無効にしない操作では、確かめ直さない（セッションも読まない）", async () => {
+		const { app, revalidate } = appWith({ getSession: loggedIn });
+
+		const res = await app.request("/api/auth/update-user", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).not.toHaveBeenCalled();
+	});
+
+	it("確かめ直しの前後で失敗しても、Better Auth の応答をそのまま返す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const broken = appWith({
+			getSession: async () => {
+				throw new Error("DB のタイムアウト");
+			},
+		});
+		const res = await broken.app.request("/api/auth/sign-out", {
+			method: "POST",
+		});
+		expect(res.status).toBe(200);
+		expect(broken.handler).toHaveBeenCalled();
+		expect(broken.revalidate).not.toHaveBeenCalled();
+
+		const failing = appWith({
+			getSession: loggedIn,
+			revalidateUser: async () => {
+				throw new Error("DB のタイムアウト");
+			},
+		});
+		const res2 = await failing.app.request("/api/auth/sign-out", {
+			method: "POST",
+		});
+		expect(res2.status).toBe(200);
+		expect(log).toHaveBeenCalled();
+		log.mockRestore();
+	});
+});

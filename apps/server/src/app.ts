@@ -52,12 +52,16 @@ export type AppDeps = {
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
 
 /**
- * /api/auth/* への POST のうち、成功しても WebSocket の接続を確かめ直さなくてよいもの
- * （セッションを作るだけで、今のセッションを無効にしない）
+ * /api/auth/* への POST のうち、セッションを無効にしうるもの。成功したら、そのアカウントの
+ * WebSocket の接続のセッションを確かめ直す（docs/context/ws.md）
  */
-const NO_REVALIDATE_AUTH_PATHS = new Set([
-	"/api/auth/sign-up/email",
-	"/api/auth/sign-in/email",
+const SESSION_ENDING_AUTH_PATHS = new Set([
+	"/api/auth/sign-out",
+	"/api/auth/revoke-session",
+	"/api/auth/revoke-sessions",
+	"/api/auth/revoke-other-sessions",
+	"/api/auth/change-password",
+	"/api/auth/delete-user",
 ]);
 
 /** HTTPException のステータスに対応するエラーの code（docs/context/uri.md「エラーの共通形式」） */
@@ -137,15 +141,27 @@ export function createApp({
 	});
 
 	app.on(["GET", "POST"], "/api/auth/*", async (c) => {
-		if (c.req.method !== "POST" || NO_REVALIDATE_AUTH_PATHS.has(c.req.path)) {
+		if (c.req.method !== "POST" || !SESSION_ENDING_AUTH_PATHS.has(c.req.path)) {
 			return auth.handler(c.req.raw);
 		}
 		// サインアウト・セッションの失効・パスワードの変更などが成功したら、そのアカウントの
-		// WebSocket の接続のセッションを、その場で確かめ直す（無効になったものはすぐに切る）
-		const session = await auth.getSession(c.req.raw.headers);
+		// WebSocket の接続のセッションを、その場で確かめ直す（無効になったものはすぐに切る）。
+		// 確かめ直しは補助なので、失敗しても Better Auth の処理と応答には影響させない
+		const userId = await auth
+			.getSession(c.req.raw.headers)
+			.then((session) => session?.user.id)
+			.catch((error: unknown) => {
+				console.error(
+					"WebSocket のための、セッションの確認に失敗しました",
+					error,
+				);
+				return undefined;
+			});
 		const res = await auth.handler(c.req.raw);
-		if (session && res.ok) {
-			await realtime.revalidateUser(session.user.id);
+		if (userId && res.ok) {
+			await realtime.revalidateUser(userId).catch((error: unknown) => {
+				console.error("WebSocket の接続の確かめ直しに失敗しました", error);
+			});
 		}
 		return res;
 	});
