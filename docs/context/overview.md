@@ -25,6 +25,7 @@ pnpm workspaces の monorepo。クライアントは Web のみ。
 ## 設計ドキュメント
 - [routes.md](routes.md) — 画面のパスの一覧（詳細は `routes/`）
 - [uri.md](uri.md) — API のパスの一覧・エラーの共通形式（詳細は `uri/`）
+- [ws.md](ws.md) — WebSocket（リアルタイム配信）の接続・部屋・イベントの形式
 - [schema.md](schema.md) — データモデル（テーブルの一覧・ER 図・相手に見せてよいものの規則。詳細は `schema/`）
 
 ## 技術スタック
