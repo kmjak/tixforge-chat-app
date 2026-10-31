@@ -8,6 +8,7 @@ import type { HealthResponse } from "@chat-app/shared";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "./app";
 import { ApiError, readJson } from "./errors";
+import type { RealtimeHub } from "./realtime";
 
 /** /health のテストでは認証を使わない */
 const deps = {
@@ -28,6 +29,7 @@ const deps = {
 	servers: {} as ServerService,
 	channels: {} as ChannelService,
 	categories: {} as CategoryService,
+	realtime: {} as RealtimeHub,
 	webOrigin: "http://localhost:3000",
 };
 
@@ -71,6 +73,7 @@ describe("エラーの共通形式", () => {
 				...deps.auth,
 				getSession: async () => ({
 					user: { id: "u1", email: "u1@example.com" },
+					sessionId: "s1",
 				}),
 			},
 		});
@@ -202,5 +205,93 @@ describe("エラーの共通形式", () => {
 		});
 		expect(body).not.toContain("db.internal");
 		expect(log).toHaveBeenCalled();
+	});
+});
+
+describe("/api/auth/* の後の WebSocket の確かめ直し", () => {
+	function appWith({
+		getSession,
+		revalidateUser = async () => {},
+	}: {
+		getSession: () => Promise<{
+			user: { id: string; email: string };
+			sessionId: string;
+		} | null>;
+		revalidateUser?: (userId: string) => Promise<void>;
+	}) {
+		const handler = jest.fn(async () => new Response("{}", { status: 200 }));
+		const revalidate = jest.fn(revalidateUser);
+		const readSession = jest.fn(getSession);
+		const app = createApp({
+			...deps,
+			pingDb: async () => true,
+			auth: { handler, getSession: readSession },
+			realtime: { revalidateUser: revalidate } as unknown as RealtimeHub,
+		});
+		return { app, handler, revalidate, readSession };
+	}
+
+	const loggedIn = async () => ({
+		user: { id: "u1", email: "u1@example.com" },
+		sessionId: "s1",
+	});
+
+	it("セッションを無効にしうる操作が成功したら、そのアカウントの接続を確かめ直す", async () => {
+		const { app, revalidate } = appWith({ getSession: loggedIn });
+
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).toHaveBeenCalledWith("u1");
+	});
+
+	it("セッションを無効にしない操作では、確かめ直さない（セッションも読まない）", async () => {
+		const { app, revalidate, readSession } = appWith({ getSession: loggedIn });
+
+		const res = await app.request("/api/auth/update-user", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).not.toHaveBeenCalled();
+		expect(readSession).not.toHaveBeenCalled();
+	});
+
+	it("確かめ直しの前にセッションを読めなくても、Better Auth の応答をそのまま返す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const { app, handler, revalidate } = appWith({
+			getSession: async () => {
+				throw new Error("DB のタイムアウト");
+			},
+		});
+
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(handler).toHaveBeenCalled();
+		expect(revalidate).not.toHaveBeenCalled();
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining("セッションの確認に失敗"),
+			expect.any(Error),
+		);
+		log.mockRestore();
+	});
+
+	it("確かめ直しに失敗しても、Better Auth の応答をそのまま返す", async () => {
+		const log = jest.spyOn(console, "error").mockImplementation(() => {});
+		const { app, revalidate } = appWith({
+			getSession: loggedIn,
+			revalidateUser: async () => {
+				throw new Error("DB のタイムアウト");
+			},
+		});
+
+		const res = await app.request("/api/auth/sign-out", { method: "POST" });
+
+		expect(res.status).toBe(200);
+		expect(revalidate).toHaveBeenCalledWith("u1");
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining("接続の確かめ直しに失敗"),
+			expect.any(Error),
+		);
+		log.mockRestore();
 	});
 });

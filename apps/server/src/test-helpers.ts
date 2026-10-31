@@ -1,15 +1,25 @@
 // テストだけで使う補助関数。本物のマイグレーションを当てた PGlite の DB で app を組み立てる
+
+import type { AddressInfo } from "node:net";
 import {
 	createCategoryService,
 	createChannelService,
 	createProfileService,
 	createServerService,
+	listRoomMemberIds,
 	PROFILE_USAGE_SOURCES,
 	type ProfileUsageSource,
 } from "@chat-app/db";
 import { createTestDb, type TestDb } from "@chat-app/db/testing";
+import { WS_PATH } from "@chat-app/shared";
+import { serve } from "@hono/node-server";
 import { createApp } from "./app";
 import { createAuth } from "./auth";
+import {
+	createRealtimeHub,
+	createWebSocketServer,
+	type RealtimeHub,
+} from "./realtime";
 
 export const WEB_ORIGIN = "http://localhost:3000";
 export const PASSWORD = "Passw0rd!";
@@ -24,7 +34,14 @@ export type TestApp = {
 		options?: { body?: unknown; cookie?: string },
 	) => Promise<Response>;
 	signUp: (name: string, email: string, password?: string) => Promise<Response>;
-	/** DB を閉じる（afterAll で呼ぶ） */
+	/** WebSocket の配信の仕組み（テストから部屋に送ったり、生存確認を動かしたりする） */
+	realtime: RealtimeHub;
+	/**
+	 * app を実際のポート（空いているもの）で listen させ、WebSocket の接続先の URL を返す
+	 * （WebSocket の upgrade は app.request では通らないため）。close で止まる
+	 */
+	listen: () => Promise<string>;
+	/** DB を閉じ、listen していれば止める（afterAll で呼ぶ） */
 	close: () => Promise<void>;
 };
 
@@ -39,21 +56,29 @@ export async function setupTestApp({
 	usageSources?: ProfileUsageSource[];
 } = {}): Promise<TestApp> {
 	const db = await createTestDb();
+	const auth = createAuth({
+		db,
+		secret: "test-secret-test-secret-test-secret",
+		baseURL: "http://localhost:3001",
+		webOrigin: WEB_ORIGIN,
+		rateLimit: false,
+	});
+	// 生存確認はテストから checkConnections で動かす（start しない）
+	const realtime = createRealtimeHub({
+		listRoomMemberIds: (room) => listRoomMemberIds(db, room),
+		getSession: auth.getSession,
+	});
 	const app = createApp({
 		pingDb: async () => true,
-		auth: createAuth({
-			db,
-			secret: "test-secret-test-secret-test-secret",
-			baseURL: "http://localhost:3001",
-			webOrigin: WEB_ORIGIN,
-			rateLimit: false,
-		}),
+		auth,
 		profiles: createProfileService(db, { usageSources }),
 		servers: createServerService(db),
 		channels: createChannelService(db),
 		categories: createCategoryService(db),
+		realtime,
 		webOrigin: WEB_ORIGIN,
 	});
+	let server: ReturnType<typeof serve> | undefined;
 
 	const request: TestApp["request"] = (method, path, { body, cookie } = {}) => {
 		const headers = new Headers({ Origin: WEB_ORIGIN });
@@ -80,7 +105,33 @@ export async function setupTestApp({
 			request("POST", "/api/auth/sign-up/email", {
 				body: { name, email, password },
 			}),
-		close: () => db.$client.close(),
+		realtime,
+		listen: () =>
+			new Promise((resolve) => {
+				server = serve(
+					{
+						fetch: app.fetch,
+						port: 0,
+						websocket: { server: createWebSocketServer() },
+					},
+					(info: AddressInfo) => {
+						resolve(`ws://localhost:${info.port}${WS_PATH}`);
+					},
+				);
+			}),
+		close: async () => {
+			if (server) {
+				const listening = server;
+				// 開いている WebSocket の接続ごと閉じる
+				await new Promise((resolve) => {
+					listening.close(resolve);
+					if ("closeAllConnections" in listening) {
+						listening.closeAllConnections();
+					}
+				});
+			}
+			await db.$client.close();
+		},
 	};
 }
 

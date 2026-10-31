@@ -30,8 +30,13 @@ export type AuthUser = { id: string; email: string };
 export type AuthService = {
 	/** /api/auth/* のリクエストを Better Auth に渡す */
 	handler: (request: Request) => Promise<Response>;
-	/** リクエストの cookie からログインしているアカウントを返す。未ログイン・無効・期限切れなら null */
-	getSession: (headers: Headers) => Promise<{ user: AuthUser } | null>;
+	/**
+	 * リクエストの cookie からログインしているアカウントと、セッションの id を返す。
+	 * 未ログイン・無効・期限切れなら null
+	 */
+	getSession: (
+		headers: Headers,
+	) => Promise<{ user: AuthUser; sessionId: string } | null>;
 };
 
 /** name を受け取る経路と、パスワードを受け取る経路（とその body のフィールド名） */
@@ -137,7 +142,10 @@ export function createAuth({
 				query: { disableRefresh: true },
 			});
 			return result
-				? { user: { id: result.user.id, email: result.user.email } }
+				? {
+						user: { id: result.user.id, email: result.user.email },
+						sessionId: result.session.id,
+					}
 				: null;
 		},
 	};

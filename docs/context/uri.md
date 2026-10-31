@@ -31,6 +31,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
     ├── invites
     │   └── {token}               GET   招待の確認              uri/get-api-invites-{token}.md
     │       └── join              POST  招待での参加            uri/post-api-invites-{token}-join.md
+    ├── ws                        GET   WebSocket の接続        ws.md
     └── auth                      （Better Auth が使う）
         ├── sign-up
         │   └── email             POST  サインアップ            uri/post-api-auth-sign-up-email.md
@@ -65,6 +66,7 @@ server（Hono）の API のパスの一覧。パスごとの詳細は `uri/` に
 - [`POST /api/servers/{serverId}/invites`](uri/post-api-servers-{serverId}-invites.md) — 招待リンクの作成
 - [`GET /api/invites/{token}`](uri/get-api-invites-{token}.md) — 招待の確認
 - [`POST /api/invites/{token}/join`](uri/post-api-invites-{token}-join.md) — 招待での参加
+- [`GET /api/ws`](ws.md) — WebSocket の接続（詳細は ws.md）
 - [`POST /api/auth/sign-up/email`](uri/post-api-auth-sign-up-email.md) — サインアップ
 - [`POST /api/auth/sign-in/email`](uri/post-api-auth-sign-in-email.md) — サインイン
 - [`POST /api/auth/sign-out`](uri/post-api-auth-sign-out.md) — サインアウト

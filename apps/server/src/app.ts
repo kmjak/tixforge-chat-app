@@ -19,10 +19,12 @@ import { registerCategoryRoutes } from "./categories";
 import { registerChannelRoutes } from "./channels";
 import { ApiError } from "./errors";
 import { registerProfileRoutes } from "./profiles";
+import type { RealtimeHub } from "./realtime";
 import { registerServerRoutes } from "./servers";
+import { registerWebSocketRoute } from "./ws";
 
-/** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user が必ずある */
-export type AppEnv = { Variables: { user: AuthUser } };
+/** ハンドラで c.get() で取り出せる値。ログイン確認を通った API では user と sessionId が必ずある */
+export type AppEnv = { Variables: { user: AuthUser; sessionId: string } };
 
 export type AppDeps = {
 	/** DB に接続できれば true を返す */
@@ -37,6 +39,8 @@ export type AppDeps = {
 	channels: ChannelService;
 	/** チャンネルのカテゴリの操作 */
 	categories: CategoryService;
+	/** WebSocket の配信の仕組み */
+	realtime: RealtimeHub;
 	/** web の origin。この origin からの cookie 付きの呼び出しを受け付ける */
 	webOrigin: string;
 };
@@ -46,6 +50,19 @@ export type AppDeps = {
  * （docs/context/uri.md「ログインの確認」）。/health は /api の外なので対象外
  */
 const PUBLIC_API_PREFIXES = ["/api/auth/"];
+
+/**
+ * /api/auth/* への POST のうち、セッションを無効にしうるもの。成功したら、そのアカウントの
+ * WebSocket の接続のセッションを確かめ直す（docs/context/ws.md）
+ */
+const SESSION_ENDING_AUTH_PATHS = new Set([
+	"/api/auth/sign-out",
+	"/api/auth/revoke-session",
+	"/api/auth/revoke-sessions",
+	"/api/auth/revoke-other-sessions",
+	"/api/auth/change-password",
+	"/api/auth/delete-user",
+]);
 
 /** HTTPException のステータスに対応するエラーの code（docs/context/uri.md「エラーの共通形式」） */
 const ERROR_CODES: Record<number, string> = {
@@ -76,6 +93,7 @@ export function createApp({
 	servers,
 	channels,
 	categories,
+	realtime,
 	webOrigin,
 }: AppDeps) {
 	const app = new Hono<AppEnv>();
@@ -118,10 +136,35 @@ export function createApp({
 			);
 		}
 		c.set("user", session.user);
+		c.set("sessionId", session.sessionId);
 		await next();
 	});
 
-	app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+	app.on(["GET", "POST"], "/api/auth/*", async (c) => {
+		if (c.req.method !== "POST" || !SESSION_ENDING_AUTH_PATHS.has(c.req.path)) {
+			return auth.handler(c.req.raw);
+		}
+		// サインアウト・セッションの失効・パスワードの変更などが成功したら、そのアカウントの
+		// WebSocket の接続のセッションを、その場で確かめ直す（無効になったものはすぐに切る）。
+		// 確かめ直しは補助なので、失敗しても Better Auth の処理と応答には影響させない
+		const userId = await auth
+			.getSession(c.req.raw.headers)
+			.then((session) => session?.user.id)
+			.catch((error: unknown) => {
+				console.error(
+					"WebSocket のための、セッションの確認に失敗しました",
+					error,
+				);
+				return undefined;
+			});
+		const res = await auth.handler(c.req.raw);
+		if (userId && res.ok) {
+			await realtime.revalidateUser(userId).catch((error: unknown) => {
+				console.error("WebSocket の接続の確かめ直しに失敗しました", error);
+			});
+		}
+		return res;
+	});
 
 	app.get("/api/me", async (c) => {
 		const user = c.get("user");
@@ -143,6 +186,7 @@ export function createApp({
 	registerServerRoutes(app, servers);
 	registerChannelRoutes(app, channels);
 	registerCategoryRoutes(app, categories);
+	registerWebSocketRoute(app, { realtime, webOrigin });
 
 	app.get("/health", async (c) => {
 		if (await pingDb()) {

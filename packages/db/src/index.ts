@@ -31,6 +31,7 @@ export {
 	type ProfileUsageSource,
 	type ProfileUsageType,
 } from "./profiles";
+export { listRoomMemberIds } from "./rooms";
 export * as schema from "./schema";
 export {
 	createServerService,
