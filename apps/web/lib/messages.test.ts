@@ -1,5 +1,10 @@
 import type { MessageResponse } from "@chat-app/shared";
-import { channelMessageFrom, mergeMessages, oldestMessageId } from "./messages";
+import {
+	applyLatestPage,
+	channelMessageFrom,
+	mergeMessages,
+	oldestMessageId,
+} from "./messages";
 
 const message = (id: number, body = `m${id}`): MessageResponse => ({
 	id,
@@ -45,5 +50,49 @@ describe("channelMessageFrom", () => {
 		expect(channelMessageFrom(event("c2"), "c1")).toBeNull();
 		expect(channelMessageFrom(event("c1", "other"), "c1")).toBeNull();
 		expect(channelMessageFrom({ type: "ready" }, "c1")).toBeNull();
+	});
+});
+
+describe("applyLatestPage", () => {
+	const page = (ids: number[], hasMore: boolean) => ({
+		// API は新しい順
+		messages: ids.map((id) => message(id)).reverse(),
+		hasMore,
+	});
+
+	it("つながっていれば、足すだけ", () => {
+		const current = [message(98), message(99), message(100)];
+
+		expect(applyLatestPage(current, page([99, 100, 101, 102], true))).toEqual({
+			messages: [98, 99, 100, 101, 102].map((id) => message(id)),
+			replaced: false,
+		});
+	});
+
+	it("間に読んでいないものがあれば、画面をそのページで置き換える", () => {
+		const current = [message(99), message(100)];
+
+		// 切れている間に 101〜200 が届き、最新のページは 151〜200
+		const latest = page(
+			Array.from({ length: 50 }, (_, i) => 151 + i),
+			true,
+		);
+
+		expect(applyLatestPage(current, latest)).toEqual({
+			messages: latest.messages.slice().reverse(),
+			replaced: true,
+		});
+	});
+
+	it("さらに古いものが無ければ、抜けは無いので足すだけ", () => {
+		const current = [message(1)];
+		expect(applyLatestPage(current, page([5, 6], false))).toEqual({
+			messages: [1, 5, 6].map((id) => message(id)),
+			replaced: false,
+		});
+		expect(applyLatestPage([], page([5, 6], true))).toEqual({
+			messages: [5, 6].map((id) => message(id)),
+			replaced: false,
+		});
 	});
 });

@@ -1,5 +1,6 @@
 import type {
 	MessageResponse,
+	MessagesResponse,
 	WsRoomEvent,
 	WsServerEvent,
 } from "@chat-app/shared";
@@ -39,4 +40,26 @@ export function channelMessageFrom(
 		return null;
 	}
 	return data as MessageResponse;
+}
+
+/**
+ * 読み直した最新のページ（新しい順）を、画面のメッセージに反映する（再接続したとき・画面を開いたとき）。
+ * ページの一番古いものが画面の一番新しいものより新しく、さらに古いものがある（＝間に読んでいないものが
+ * ある）ときは、抜けたまま並ばないよう、画面をそのページで置き換える（replaced。さかのぼりで読み直せる）。
+ * つながっていれば足すだけ
+ */
+export function applyLatestPage(
+	current: MessageResponse[],
+	page: MessagesResponse,
+): { messages: MessageResponse[]; replaced: boolean } {
+	const newestShown = current.at(-1)?.id;
+	const oldestInPage = page.messages.at(-1)?.id;
+	const gap =
+		page.hasMore &&
+		newestShown !== undefined &&
+		oldestInPage !== undefined &&
+		oldestInPage > newestShown;
+	return gap
+		? { messages: mergeMessages([], page.messages), replaced: true }
+		: { messages: mergeMessages(current, page.messages), replaced: false };
 }

@@ -12,11 +12,13 @@ import {
 	useLayoutEffect,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import { callApi } from "../../../../../lib/api";
 import { errorMessage } from "../../../../../lib/error-messages";
 import { formatMessageTime } from "../../../../../lib/format-time";
 import {
+	applyLatestPage,
 	channelMessageFrom,
 	mergeMessages,
 	oldestMessageId,
@@ -26,6 +28,20 @@ import styles from "./channel-messages.module.css";
 
 /** 一番上（下）から、この距離までを「一番上（下）にいる」とみなす */
 const EDGE_PX = 40;
+
+const noSubscribe = () => () => {};
+
+/**
+ * ブラウザで描画しているか。サーバー側の描画と hydration の間は false。日時の文字列はブラウザの
+ * タイムゾーンで作るので、サーバー側の描画と食い違わないよう、true になってから作る
+ */
+function useIsClient(): boolean {
+	return useSyncExternalStore(
+		noSubscribe,
+		() => true,
+		() => false,
+	);
+}
 
 /**
  * チャンネルのメッセージ（docs/context/routes/servers-{serverId}-channels-{channelId}.md）。
@@ -47,6 +63,12 @@ export function ChannelMessages({
 	);
 	const [hasMore, setHasMore] = useState(initial.hasMore);
 	const [loadingOlder, setLoadingOlder] = useState(false);
+	// 描画し直す前に続けて起きた scroll でも重ねて読み込まないよう、ref でも持つ
+	const loadingOlderRef = useRef(false);
+	const isClient = useIsClient();
+	// catchUp が、今の画面のメッセージを見て置き換えるか決めるため
+	const messagesRef = useRef(messages);
+	messagesRef.current = messages;
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const listRef = useRef<HTMLOListElement>(null);
@@ -80,34 +102,60 @@ export function ChannelMessages({
 				: list.scrollHeight - pending.height + pending.top;
 	});
 
-	useEffect(
-		() =>
-			subscribe((event) => {
-				if (event.type === "ready") {
-					// 再接続した：切れていた間のメッセージを取りこぼさないよう、最新のページを読み直す
-					void callApi<MessagesResponse>(path).then((result) => {
-						if (result.ok) {
-							append(result.data.messages);
-						}
-					});
-					return;
-				}
-				const message = channelMessageFrom(event, channelId);
-				if (message) {
-					append([message]);
-				}
-			}),
-		[subscribe, path, channelId, append],
-	);
+	/**
+	 * 最新のページを読み直して反映する。画面を開いたとき（読み込んでから購読を始めるまでの分）と、
+	 * 再接続したとき（切れていた間の分）に呼ぶ。間に読んでいないものがあれば画面を置き換える
+	 */
+	const catchUp = useCallback(async () => {
+		const result = await callApi<MessagesResponse>(path);
+		if (!result.ok) {
+			if (result.code === "NOT_FOUND") {
+				// チャンネルが削除された・サーバーを退出していた：読み込み直して 404 の画面にする
+				window.location.reload();
+			}
+			// server に届かないときは、次の再接続で読み直す
+			return;
+		}
+		const list = listRef.current;
+		if (
+			!list ||
+			list.scrollHeight - list.scrollTop - list.clientHeight < EDGE_PX
+		) {
+			pendingScroll.current = { type: "bottom" };
+		}
+		const applied = applyLatestPage(messagesRef.current, result.data);
+		if (applied.replaced) {
+			setHasMore(result.data.hasMore);
+			pendingScroll.current = { type: "bottom" };
+		}
+		setMessages(applied.messages);
+	}, [path]);
+
+	useEffect(() => {
+		const unsubscribe = subscribe((event) => {
+			if (event.type === "ready") {
+				void catchUp();
+				return;
+			}
+			const message = channelMessageFrom(event, channelId);
+			if (message) {
+				append([message]);
+			}
+		});
+		void catchUp();
+		return unsubscribe;
+	}, [subscribe, channelId, append, catchUp]);
 
 	async function loadOlder() {
 		const before = oldestMessageId(messages);
 		const list = listRef.current;
-		if (loadingOlder || !hasMore || before === undefined || !list) {
+		if (loadingOlderRef.current || !hasMore || before === undefined || !list) {
 			return;
 		}
+		loadingOlderRef.current = true;
 		setLoadingOlder(true);
 		const result = await callApi<MessagesResponse>(`${path}?before=${before}`);
+		loadingOlderRef.current = false;
 		setLoadingOlder(false);
 		if (!result.ok) {
 			setError(errorMessage(result.code));
@@ -172,7 +220,7 @@ export function ChannelMessages({
 							</span>
 							{message.kind === "join" && <span>が参加しました</span>}
 							<time className={styles.time} dateTime={message.createdAt}>
-								{formatMessageTime(message.createdAt)}
+								{isClient ? formatMessageTime(message.createdAt) : ""}
 							</time>
 						</div>
 						{message.kind === "text" && (
