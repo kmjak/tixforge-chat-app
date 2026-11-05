@@ -43,23 +43,42 @@ export function channelMessageFrom(
 }
 
 /**
- * 読み直した最新のページ（新しい順）を、画面のメッセージに反映する（再接続したとき・画面を開いたとき）。
- * ページの一番古いものが画面の一番新しいものより新しく、さらに古いものがある（＝間に読んでいないものが
- * ある）ときは、抜けたまま並ばないよう、画面をそのページで置き換える（replaced。さかのぼりで読み直せる）。
- * つながっていれば足すだけ
+ * 読み直した最新のページ（新しい順）で、画面を置き換えるか（再接続したとき・画面を開いたとき）。
+ * knownNewestId は、読み直しを始めた時点で画面にあった一番新しい id（無ければ undefined）。
+ * 間に読んでいないものがある（ページの一番古いものが knownNewestId より新しく、さらに古いものがある）か、
+ * 画面が空だったときは置き換える（抜けたまま並ばないように。置き換えた後はさかのぼりで読み直せる）。
+ * 読み直しの間に WebSocket で届いたものに左右されないよう、今の画面ではなく始めた時点の id で決める
+ */
+export function shouldReplaceWithLatestPage(
+	page: MessagesResponse,
+	knownNewestId: number | undefined,
+): boolean {
+	if (knownNewestId === undefined) {
+		return true;
+	}
+	const oldestInPage = page.messages.at(-1)?.id;
+	return (
+		page.hasMore && oldestInPage !== undefined && oldestInPage > knownNewestId
+	);
+}
+
+/**
+ * 読み直した最新のページを、今の画面のメッセージに反映した結果。置き換えるときも、ページより新しいもの
+ * （読み直しの間に WebSocket で届いた・送った）は残す
  */
 export function applyLatestPage(
 	current: MessageResponse[],
 	page: MessagesResponse,
-): { messages: MessageResponse[]; replaced: boolean } {
-	const newestShown = current.at(-1)?.id;
-	const oldestInPage = page.messages.at(-1)?.id;
-	const gap =
-		page.hasMore &&
-		newestShown !== undefined &&
-		oldestInPage !== undefined &&
-		oldestInPage > newestShown;
-	return gap
-		? { messages: mergeMessages([], page.messages), replaced: true }
-		: { messages: mergeMessages(current, page.messages), replaced: false };
+	replace: boolean,
+): MessageResponse[] {
+	if (!replace) {
+		return mergeMessages(current, page.messages);
+	}
+	const newestInPage = page.messages[0]?.id;
+	return mergeMessages(
+		page.messages,
+		newestInPage === undefined
+			? current
+			: current.filter((message) => message.id > newestInPage),
+	);
 }

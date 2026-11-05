@@ -4,6 +4,7 @@ import {
 	channelMessageFrom,
 	mergeMessages,
 	oldestMessageId,
+	shouldReplaceWithLatestPage,
 } from "./messages";
 
 const message = (id: number, body = `m${id}`): MessageResponse => ({
@@ -53,46 +54,61 @@ describe("channelMessageFrom", () => {
 	});
 });
 
-describe("applyLatestPage", () => {
+describe("shouldReplaceWithLatestPage・applyLatestPage", () => {
 	const page = (ids: number[], hasMore: boolean) => ({
 		// API は新しい順
 		messages: ids.map((id) => message(id)).reverse(),
 		hasMore,
 	});
+	const range = (from: number, to: number) =>
+		Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
-	it("つながっていれば、足すだけ", () => {
-		const current = [message(98), message(99), message(100)];
+	it("つながっていれば、置き換えずに足す", () => {
+		const latest = page([99, 100, 101, 102], true);
 
-		expect(applyLatestPage(current, page([99, 100, 101, 102], true))).toEqual({
-			messages: [98, 99, 100, 101, 102].map((id) => message(id)),
-			replaced: false,
-		});
+		expect(shouldReplaceWithLatestPage(latest, 100)).toBe(false);
+		expect(
+			applyLatestPage(
+				[98, 99, 100].map((id) => message(id)),
+				latest,
+				false,
+			),
+		).toEqual([98, 99, 100, 101, 102].map((id) => message(id)));
 	});
 
-	it("間に読んでいないものがあれば、画面をそのページで置き換える", () => {
-		const current = [message(99), message(100)];
+	it("間に読んでいないものがあれば、そのページで置き換える", () => {
+		// 画面は 100 まで。切れている間に 101〜200 が届き、最新のページは 151〜200
+		const latest = page(range(151, 200), true);
 
-		// 切れている間に 101〜200 が届き、最新のページは 151〜200
-		const latest = page(
-			Array.from({ length: 50 }, (_, i) => 151 + i),
-			true,
+		expect(shouldReplaceWithLatestPage(latest, 100)).toBe(true);
+		expect(
+			applyLatestPage(
+				[99, 100].map((id) => message(id)),
+				latest,
+				true,
+			),
+		).toEqual(range(151, 200).map((id) => message(id)));
+	});
+
+	it("読み直しの間に新しいものが届いても、始めた時点の id で抜けを見つけ、届いたものは残す", () => {
+		const latest = page(range(151, 200), true);
+		// 読み直しを始めた時点では 100 まで。応答の前に 201 が届いた
+		const current = [99, 100, 201].map((id) => message(id));
+
+		expect(shouldReplaceWithLatestPage(latest, 100)).toBe(true);
+		expect(applyLatestPage(current, latest, true)).toEqual(
+			[...range(151, 200), 201].map((id) => message(id)),
 		);
-
-		expect(applyLatestPage(current, latest)).toEqual({
-			messages: latest.messages.slice().reverse(),
-			replaced: true,
-		});
 	});
 
-	it("さらに古いものが無ければ、抜けは無いので足すだけ", () => {
-		const current = [message(1)];
-		expect(applyLatestPage(current, page([5, 6], false))).toEqual({
-			messages: [1, 5, 6].map((id) => message(id)),
-			replaced: false,
-		});
-		expect(applyLatestPage([], page([5, 6], true))).toEqual({
-			messages: [5, 6].map((id) => message(id)),
-			replaced: false,
-		});
+	it("画面が空だったときは、ページで置き換える（さらに古いものの有無もページに合わせる）", () => {
+		expect(
+			shouldReplaceWithLatestPage(page(range(51, 100), true), undefined),
+		).toBe(true);
+		expect(shouldReplaceWithLatestPage(page([], false), undefined)).toBe(true);
+	});
+
+	it("さらに古いものが無ければ、抜けは無いので置き換えない", () => {
+		expect(shouldReplaceWithLatestPage(page([5, 6], false), 1)).toBe(false);
 	});
 });

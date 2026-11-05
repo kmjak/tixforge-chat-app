@@ -22,6 +22,7 @@ import {
 	channelMessageFrom,
 	mergeMessages,
 	oldestMessageId,
+	shouldReplaceWithLatestPage,
 } from "../../../../../lib/messages";
 import { useRealtimeEvents } from "../../../../components/realtime-provider";
 import styles from "./channel-messages.module.css";
@@ -66,9 +67,11 @@ export function ChannelMessages({
 	// 描画し直す前に続けて起きた scroll でも重ねて読み込まないよう、ref でも持つ
 	const loadingOlderRef = useRef(false);
 	const isClient = useIsClient();
-	// catchUp が、今の画面のメッセージを見て置き換えるか決めるため
+	// catchUp が、読み直しを始めた時点の一番新しい id を見るため
 	const messagesRef = useRef(messages);
 	messagesRef.current = messages;
+	// 画面を置き換えた回数。置き換える前に始めたさかのぼりの応答を捨てるため
+	const generationRef = useRef(0);
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const listRef = useRef<HTMLOListElement>(null);
@@ -107,6 +110,7 @@ export function ChannelMessages({
 	 * 再接続したとき（切れていた間の分）に呼ぶ。間に読んでいないものがあれば画面を置き換える
 	 */
 	const catchUp = useCallback(async () => {
+		const knownNewestId = messagesRef.current.at(-1)?.id;
 		const result = await callApi<MessagesResponse>(path);
 		if (!result.ok) {
 			if (result.code === "NOT_FOUND") {
@@ -123,12 +127,15 @@ export function ChannelMessages({
 		) {
 			pendingScroll.current = { type: "bottom" };
 		}
-		const applied = applyLatestPage(messagesRef.current, result.data);
-		if (applied.replaced) {
-			setHasMore(result.data.hasMore);
+		const page = result.data;
+		const replace = shouldReplaceWithLatestPage(page, knownNewestId);
+		if (replace) {
+			generationRef.current += 1;
+			setHasMore(page.hasMore);
 			pendingScroll.current = { type: "bottom" };
 		}
-		setMessages(applied.messages);
+		// まだ描画に反映されていない新着・送信の応答を消さないよう、関数で更新する
+		setMessages((current) => applyLatestPage(current, page, replace));
 	}, [path]);
 
 	useEffect(() => {
@@ -154,9 +161,14 @@ export function ChannelMessages({
 		}
 		loadingOlderRef.current = true;
 		setLoadingOlder(true);
+		const generation = generationRef.current;
 		const result = await callApi<MessagesResponse>(`${path}?before=${before}`);
 		loadingOlderRef.current = false;
 		setLoadingOlder(false);
+		if (generation !== generationRef.current) {
+			// 読み込んでいる間に画面を置き換えた：この古いページは、今の画面とつながらない
+			return;
+		}
 		if (!result.ok) {
 			setError(errorMessage(result.code));
 			return;
