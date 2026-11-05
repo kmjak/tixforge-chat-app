@@ -70,8 +70,12 @@ export function ChannelMessages({
 	// catchUp が、読み直しを始めた時点の一番新しい id を見るため
 	const messagesRef = useRef(messages);
 	messagesRef.current = messages;
-	// 画面を置き換えた回数。置き換える前に始めたさかのぼりの応答を捨てるため
+	// 画面を置き換えた回数。置き換える前に始めたさかのぼりの応答を捨てるため。ref は最新の回数、
+	// state は描画した時点の回数（さかのぼりは、描画した時点の画面と回数を組で使う）
 	const generationRef = useRef(0);
+	const [generation, setGeneration] = useState(0);
+	// 最後に始めた読み直しの番号。先に始めた読み直しの応答が後から届いても反映しないため
+	const catchUpSeqRef = useRef(0);
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const listRef = useRef<HTMLOListElement>(null);
@@ -110,8 +114,14 @@ export function ChannelMessages({
 	 * 再接続したとき（切れていた間の分）に呼ぶ。間に読んでいないものがあれば画面を置き換える
 	 */
 	const catchUp = useCallback(async () => {
+		catchUpSeqRef.current += 1;
+		const seq = catchUpSeqRef.current;
 		const knownNewestId = messagesRef.current.at(-1)?.id;
 		const result = await callApi<MessagesResponse>(path);
+		if (seq !== catchUpSeqRef.current) {
+			// 後から始めた読み直しがある：そちらの結果を使う
+			return;
+		}
 		if (!result.ok) {
 			if (result.code === "NOT_FOUND") {
 				// チャンネルが削除された・サーバーを退出していた：読み込み直して 404 の画面にする
@@ -131,6 +141,7 @@ export function ChannelMessages({
 		const replace = shouldReplaceWithLatestPage(page, knownNewestId);
 		if (replace) {
 			generationRef.current += 1;
+			setGeneration(generationRef.current);
 			setHasMore(page.hasMore);
 			pendingScroll.current = { type: "bottom" };
 		}
@@ -161,11 +172,12 @@ export function ChannelMessages({
 		}
 		loadingOlderRef.current = true;
 		setLoadingOlder(true);
-		const generation = generationRef.current;
+		// before（描画した時点の画面）と同じ時点の回数を使う
+		const startedGeneration = generation;
 		const result = await callApi<MessagesResponse>(`${path}?before=${before}`);
 		loadingOlderRef.current = false;
 		setLoadingOlder(false);
-		if (generation !== generationRef.current) {
+		if (startedGeneration !== generationRef.current) {
 			// 読み込んでいる間に画面を置き換えた：この古いページは、今の画面とつながらない
 			return;
 		}
