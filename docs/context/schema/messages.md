@@ -27,6 +27,7 @@
 - インデックス（部分インデックス）：`(channel_id, id desc)`（`channel_id` がある行）、`(dm_id, id desc)`（`dm_id` がある行。予定（GT-000017））、`(group_dm_id, id desc)`（`group_dm_id` がある行。予定（GT-000018））
 - アプリが守る
   - 取得・送信の前に、[参加者の確認](../schema.md#参加者の確認)を行う。削除したチャンネルのメッセージは取得も送信もできない
+  - チャンネルへの送信は、transaction の最初にそのサーバーの `servers` の行を `SELECT … FOR SHARE` でロックしてから確かめて保存する。チャンネルの削除（`FOR UPDATE`）と同時に起きても、削除したチャンネルに保存しない（送信どうしは待たない）
   - 本文の前後の空白を取り除き、空なら送れない
   - 取得は新しい順に 50 件ずつ。続きは、前に受け取った中で最も小さい `id` より小さいものを取る
   - DM・グループ DM に送ったら、同じ transaction で `dms.last_message_at`・`group_dms.last_message_at` を更新する
