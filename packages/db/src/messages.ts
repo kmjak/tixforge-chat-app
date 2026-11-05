@@ -2,8 +2,8 @@ import { MESSAGE_PAGE_SIZE } from "@chat-app/shared";
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { findAliveChannel } from "./channels";
 import type { AnyDb } from "./client";
-import { findServerMembership } from "./ownership";
-import { channels, messages, profiles, serverMembers } from "./schema";
+import { findServerMembership, isUuid } from "./ownership";
+import { channels, messages, profiles, serverMembers, servers } from "./schema";
 import {
 	type MemberProfile,
 	type MemberProfileResolver,
@@ -185,29 +185,41 @@ export function createMessageService(
 			};
 		},
 
-		send: async (userId, serverId, channelId, body) => {
-			if (!(await canAccess(db, userId, serverId, channelId))) {
-				return { ok: false, reason: "not-found" } as const;
-			}
-			const [row] = await db
-				.insert(messages)
-				.values({ channelId, senderUserId: userId, kind: "text", body })
-				.returning(messageColumns);
-			if (!row) {
-				throw new Error("メッセージを保存できませんでした");
-			}
-			const [message] = await toMessages(
-				db,
-				resolveMemberProfiles,
-				userId,
-				serverId,
-				[row],
-			);
-			if (!message) {
-				throw new Error("メッセージを表せませんでした");
-			}
-			return { ok: true, message } as const;
-		},
+		send: (userId, serverId, channelId, body) =>
+			db.transaction(async (tx) => {
+				if (!isUuid(serverId)) {
+					return { ok: false, reason: "not-found" } as const;
+				}
+				// チャンネルの削除（servers の行を FOR UPDATE でロックする）と同時に送っても、
+				// 削除したチャンネルに保存しないよう、確かめる前に servers の行を共有ロックする
+				// （送信どうしは待たない）
+				await tx
+					.select({ id: servers.id })
+					.from(servers)
+					.where(eq(servers.id, serverId))
+					.for("share");
+				if (!(await canAccess(tx, userId, serverId, channelId))) {
+					return { ok: false, reason: "not-found" } as const;
+				}
+				const [row] = await tx
+					.insert(messages)
+					.values({ channelId, senderUserId: userId, kind: "text", body })
+					.returning(messageColumns);
+				if (!row) {
+					throw new Error("メッセージを保存できませんでした");
+				}
+				const [message] = await toMessages(
+					tx,
+					resolveMemberProfiles,
+					userId,
+					serverId,
+					[row],
+				);
+				if (!message) {
+					throw new Error("メッセージを表せませんでした");
+				}
+				return { ok: true, message } as const;
+			}),
 
 		findForBroadcast: async (messageId) => {
 			const [row] = await db

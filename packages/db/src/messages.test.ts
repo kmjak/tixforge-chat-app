@@ -16,6 +16,31 @@ afterAll(async () => {
 	await db.$client.close();
 });
 
+afterEach(() => {
+	jest.restoreAllMocks();
+});
+
+/** transaction の中で実行された SQL を記録する（ロックの確認用） */
+function recordTransactionQueries(): string[] {
+	const queries: string[] = [];
+	const client = db.$client;
+	const original = client.transaction.bind(client);
+	jest.spyOn(client, "transaction").mockImplementation(((
+		callback: (tx: {
+			query: (sql: string, ...rest: unknown[]) => unknown;
+		}) => unknown,
+	) =>
+		original(async (tx) => {
+			const query = tx.query.bind(tx);
+			const recording = (sql: string, ...rest: unknown[]) => {
+				queries.push(sql);
+				return (query as (...args: unknown[]) => unknown)(sql, ...rest);
+			};
+			return callback({ ...tx, query: recording } as never);
+		})) as never);
+	return queries;
+}
+
 let seq = 0;
 
 async function insertUser(name: string) {
@@ -231,5 +256,41 @@ describe("createMessageService", () => {
 		expect(again).toEqual({ ok: true, serverId, alreadyMember: true });
 		const page = await m().list(owner.userId, serverId, channelId);
 		expect(page?.messages.filter((x) => x.kind === "join")).toHaveLength(1);
+	});
+
+	it("送信は、transaction の中で先に servers の行を共有ロックしてから確かめる", async () => {
+		const { owner, serverId, channelId } = await setup();
+		const queries = recordTransactionQueries();
+
+		await m().send(owner.userId, serverId, channelId, "locked");
+
+		expect(queries[0]).toMatch(/select .* from "servers" .*for share/i);
+	});
+
+	it("退出した人が再び参加すると、また参加のメッセージが入る", async () => {
+		const { owner, member, serverId, channelId, invite } = await setup();
+		await db.$client.query(
+			"UPDATE server_members SET left_at = now(), profile_id = NULL, left_display_name = 'Member' WHERE user_id = $1",
+			[member.userId],
+		);
+
+		const rejoined = await createServerService(db).join(
+			member.userId,
+			invite,
+			member.profileId,
+		);
+
+		expect(rejoined).toEqual({
+			ok: true,
+			serverId,
+			alreadyMember: false,
+			joinMessageId: expect.any(Number),
+		});
+		const page = await m().list(owner.userId, serverId, channelId);
+		expect(page?.messages.filter((x) => x.kind === "join")).toHaveLength(2);
+		expect(page?.messages[0]).toMatchObject({
+			kind: "join",
+			sender: { id: member.profileId, name: "Member" },
+		});
 	});
 });
