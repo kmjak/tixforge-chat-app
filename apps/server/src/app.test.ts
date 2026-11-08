@@ -1,6 +1,7 @@
 import type {
 	CategoryService,
 	ChannelService,
+	MessageService,
 	ProfileService,
 	ServerService,
 } from "@chat-app/db";
@@ -29,6 +30,7 @@ const deps = {
 	servers: {} as ServerService,
 	channels: {} as ChannelService,
 	categories: {} as CategoryService,
+	messages: {} as MessageService,
 	realtime: {} as RealtimeHub,
 	webOrigin: "http://localhost:3000",
 };

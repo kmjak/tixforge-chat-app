@@ -3,7 +3,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| 状態 | 予定（GT-000014） |
+| 状態 | 実装済み（GT-000014） |
 | 目的 | チャンネル・DM・グループ DM に投稿するテキストと、参加・退出のメッセージ。送り手はアカウントで持ち、表示するたびに、その場で使っている今のプロフィールを引く |
 
 ### 列
@@ -20,13 +20,14 @@
 
 ### キーと制約
 - 主キー：`id`
-- 外部キー：`channel_id` → `channels.id`、`dm_id` → `dms.id`、`group_dm_id` → `group_dms.id`、`sender_user_id` → `user.id`
-- CHECK：`num_nonnulls(channel_id, dm_id, group_dm_id) = 1`（部屋はどれか 1 つ）
+- 外部キー：`channel_id` → `channels.id`、`dm_id` → `dms.id`（予定（GT-000017））、`group_dm_id` → `group_dms.id`（予定（GT-000018））、`sender_user_id` → `user.id`
+- CHECK：`num_nonnulls(channel_id, dm_id, group_dm_id) = 1`（部屋はどれか 1 つ）。GT-000014 では `dm_id`・`group_dm_id` の列が無いので `num_nonnulls(channel_id) = 1`（名前は `messages_one_room`）。列を足すチケットで変える
 - CHECK：`kind in ('text', 'join', 'leave')`
 - CHECK：`(kind = 'text') = (body is not null)`、`body is null or char_length(body) between 1 and 2000`
-- インデックス（部分インデックス）：`(channel_id, id desc)`（`channel_id` がある行）、`(dm_id, id desc)`（`dm_id` がある行）、`(group_dm_id, id desc)`（`group_dm_id` がある行）
+- インデックス（部分インデックス）：`(channel_id, id desc)`（`channel_id` がある行）、`(dm_id, id desc)`（`dm_id` がある行。予定（GT-000017））、`(group_dm_id, id desc)`（`group_dm_id` がある行。予定（GT-000018））
 - アプリが守る
   - 取得・送信の前に、[参加者の確認](../schema.md#参加者の確認)を行う。削除したチャンネルのメッセージは取得も送信もできない
+  - チャンネルへの送信は、transaction の最初にそのサーバーの `servers` の行を `SELECT … FOR SHARE` でロックしてから確かめて保存する。チャンネルの削除（`FOR UPDATE`）と同時に起きても、削除したチャンネルに保存しない（送信どうしは待たない）
   - 本文の前後の空白を取り除き、空なら送れない
   - 取得は新しい順に 50 件ずつ。続きは、前に受け取った中で最も小さい `id` より小さいものを取る
   - DM・グループ DM に送ったら、同じ transaction で `dms.last_message_at`・`group_dms.last_message_at` を更新する

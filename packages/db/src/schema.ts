@@ -1,6 +1,7 @@
 // テーブルの定義。テーブルは後のチケットでここに追加する
 import { sql } from "drizzle-orm";
 import {
+	bigint,
 	boolean,
 	check,
 	index,
@@ -258,6 +259,42 @@ export const channels = pgTable(
 		check(
 			"channels_default_not_deleted",
 			sql`not (${table.isDefault} and ${table.deletedAt} is not null)`,
+		),
+	],
+);
+
+/**
+ * メッセージ（docs/context/schema/messages.md）。dm_id・group_dm_id は DM・グループ DM の
+ * チケット（GT-000017・GT-000018）で足し、そのとき部屋の CHECK も変える
+ */
+export const messages = pgTable(
+	"messages",
+	{
+		id: bigint("id", { mode: "number" })
+			.primaryKey()
+			.generatedAlwaysAsIdentity(),
+		channelId: uuid("channel_id").references(() => channels.id),
+		/** 送り手のアカウント。API の応答・WebSocket のイベントに含めない */
+		senderUserId: uuid("sender_user_id")
+			.notNull()
+			.references(() => user.id),
+		kind: text("kind").notNull(),
+		body: varchar("body", { length: 2000 }),
+		createdAt: createdAt(),
+	},
+	(table) => [
+		index("messages_channel_id_id_idx")
+			.on(table.channelId, table.id.desc())
+			.where(sql`${table.channelId} is not null`),
+		check("messages_one_room", sql`num_nonnulls(${table.channelId}) = 1`),
+		check("messages_kind", sql`${table.kind} in ('text', 'join', 'leave')`),
+		check(
+			"messages_body_only_text",
+			sql`(${table.kind} = 'text') = (${table.body} is not null)`,
+		),
+		check(
+			"messages_body_length",
+			sql`${table.body} is null or char_length(${table.body}) between 1 and 2000`,
 		),
 	],
 );

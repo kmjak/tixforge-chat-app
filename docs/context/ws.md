@@ -55,9 +55,21 @@ server の処理は、部屋を指定してイベントを送る。**届け先�
 | `type` | 部屋 | `data` | 送るとき | 状態 |
 |--------|------|--------|----------|------|
 | `ready` | なし | なし | 接続できたとき（最初に 1 回） | 実装済み（GT-000013） |
+| `message.created` | チャンネル | `Message`（下） | チャンネルにメッセージが送られた・サーバーに参加して参加のメッセージが入った | 実装済み（GT-000014） |
 
 ```json
 { "type": "ready" }
+```
+
+### `message.created` の `data`
+[`GET /api/servers/{serverId}/channels/{channelId}/messages`](uri/get-api-servers-{serverId}-channels-{channelId}-messages.md) の `Message` と同じ形（`id`・`kind`・`body`・`sender`・`createdAt`）。アカウントの id は含めない。
+
+- `sender` は、送り手がそのサーバーで選んだプロフィールで表す（今は見る人によらず同じイベントを部屋の全員に送る）。**フレンドの割り当てを優先する GT-000015 で、見る人ごとに `sender` を変えて送り分ける。**
+- ブラウザは、自分が送ったものも API の応答とこのイベントの両方で受け取るので、`id` で 1 つにする。
+
+```json
+{ "type": "message.created", "room": { "type": "channel", "id": "3f1a…" },
+  "data": { "id": 42, "kind": "text", "body": "こんにちは", "sender": { "id": "9d0f…", "name": "たろう" }, "createdAt": "2026-10-30T05:05:00.000Z" } }
 ```
 
 ## 追記の決まり

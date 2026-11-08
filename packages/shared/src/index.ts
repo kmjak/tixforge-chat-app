@@ -88,6 +88,28 @@ export type ChannelLayoutRequest = {
 	categories: { id: string; channels: string[] }[];
 };
 
+/**
+ * メッセージの送り手。見る人に見せるプロフィール（アカウントの id は含めない）。
+ * サーバーを退出した人は、id が null で、name に退出したときの名前と「（退出済み）」
+ */
+export type MessageSender = { id: string | null; name: string };
+
+/** メッセージ（`/api/servers/{serverId}/channels/{channelId}/messages` の API と、`message.created` のイベント） */
+export type MessageResponse = {
+	id: number;
+	/** text：ふつうのメッセージ、join：サーバーに参加した（本文は無い） */
+	kind: "text" | "join";
+	body: string | null;
+	sender: MessageSender;
+	createdAt: string;
+};
+
+/** `GET .../messages` のレスポンス。新しい順。hasMore は、これより古いメッセージがあるか */
+export type MessagesResponse = {
+	messages: MessageResponse[];
+	hasMore: boolean;
+};
+
 /** 4xx・5xx のレスポンスの共通形式（docs/context/uri.md「エラーの共通形式」） */
 export type ErrorResponse = {
 	/** エラーの種類（英大文字の SNAKE_CASE）。web はこれで分岐する */
@@ -108,8 +130,11 @@ export {
 	MAX_CHANNELS_PER_CATEGORY,
 	MAX_CHANNELS_WITHOUT_CATEGORY,
 	MAX_PROFILES,
+	MESSAGE_BODY_MAX_LENGTH,
+	MESSAGE_PAGE_SIZE,
 	NAME_MAX_LENGTH,
 	normalizeChannelName,
+	normalizeMessageBody,
 	normalizeName,
 	normalizeServerName,
 	PASSWORD_MAX_LENGTH,

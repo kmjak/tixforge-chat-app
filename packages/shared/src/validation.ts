@@ -128,3 +128,22 @@ export function normalizeChannelName(name: string): string | null {
 	}
 	return chars.join("");
 }
+
+/** メッセージの本文の長さの上限（前後の空白を除いて数える） */
+export const MESSAGE_BODY_MAX_LENGTH = 2000;
+
+/** メッセージを 1 回に読み込む件数 */
+export const MESSAGE_PAGE_SIZE = 50;
+
+/**
+ * メッセージの本文の前後の空白を除いた値を返す。除いた後が 1〜2000 文字（コードポイント）で、
+ * U+0000 を含まなければその値、そうでなければ null（空・空白だけは送れない）
+ */
+export function normalizeMessageBody(body: string): string | null {
+	const trimmed = body.trim();
+	const length = [...trimmed].length;
+	if (length < 1 || length > MESSAGE_BODY_MAX_LENGTH || trimmed.includes(NUL)) {
+		return null;
+	}
+	return trimmed;
+}

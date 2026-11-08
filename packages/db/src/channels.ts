@@ -106,7 +106,8 @@ function groupLimit(categoryId: string | null): number {
 		: MAX_CHANNELS_PER_CATEGORY;
 }
 
-async function findAliveChannel(
+/** 同じサーバーの、削除していないチャンネル。UUID の形でない id は undefined */
+export async function findAliveChannel(
 	db: AnyDb,
 	serverId: string,
 	channelId: string,

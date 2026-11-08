@@ -34,6 +34,10 @@ const MESSAGES: Record<string, string> = {
 	CATEGORY_LIMIT_REACHED: "カテゴリは 5 個まで作れます。",
 	CATEGORY_HAS_DEFAULT_CHANNEL:
 		"既定のチャンネルが入っているカテゴリは削除できません。先に既定のチャンネルをほかの並びへ移してください。",
+	INVALID_MESSAGE:
+		"メッセージは 1〜2000 文字で入力してください（空白だけは送れません）。",
+	INVALID_CURSOR:
+		"前のメッセージを読み込めませんでした。ページを読み込み直してください。",
 	INVALID_LAYOUT:
 		"並び順を保存できませんでした。ページを読み込み直してください。",
 	LAYOUT_OUTDATED:

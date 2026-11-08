@@ -113,6 +113,7 @@ describe("createServerService", () => {
 				ok: true,
 				serverId: server.id,
 				alreadyMember: false,
+				joinMessageId: expect.any(Number),
 			},
 		);
 		expect(await s().join(guest.userId, invite.token, guest.profileId)).toEqual(
@@ -147,6 +148,7 @@ describe("createServerService", () => {
 			ok: true,
 			serverId: server.id,
 			alreadyMember: false,
+			joinMessageId: expect.any(Number),
 		});
 		expect(await s().list(guest.userId)).toEqual([
 			expect.objectContaining({

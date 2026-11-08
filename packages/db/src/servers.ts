@@ -6,6 +6,7 @@ import { findOwnProfile, isUuid, lockUser } from "./ownership";
 import type { ProfileUsage, ProfileUsageSource } from "./profiles";
 import {
 	channels,
+	messages,
 	profiles,
 	serverInvites,
 	serverMembers,
@@ -92,7 +93,13 @@ export type ServerService = {
 		token: string,
 		profileId: string,
 	) => Promise<
-		| { ok: true; serverId: string; alreadyMember: boolean }
+		| {
+				ok: true;
+				serverId: string;
+				alreadyMember: boolean;
+				/** 新しく参加した（再参加を含む）ときに、既定のチャンネルに入れた参加のメッセージの id */
+				joinMessageId?: number;
+		  }
 		| { ok: false; reason: "not-found" | "expired" | "invalid-profile" }
 	>;
 };
@@ -423,10 +430,28 @@ export function createServerService(
 							joinedAt: sql`now()`,
 						},
 					});
+				// 既定のチャンネルに、参加のメッセージを入れる（docs/context/schema/messages.md）
+				const [general] = await tx
+					.select({ id: channels.id })
+					.from(channels)
+					.where(
+						and(
+							eq(channels.serverId, invite.serverId),
+							eq(channels.isDefault, true),
+						),
+					);
+				if (!general) {
+					throw new Error("既定のチャンネルがありません");
+				}
+				const [joinMessage] = await tx
+					.insert(messages)
+					.values({ channelId: general.id, senderUserId: userId, kind: "join" })
+					.returning({ id: messages.id });
 				return {
 					ok: true,
 					serverId: invite.serverId,
 					alreadyMember: false,
+					joinMessageId: joinMessage?.id,
 				} as const;
 			}),
 	};

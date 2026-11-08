@@ -50,6 +50,13 @@
       "when": 1792821099449,
       "tag": "0006_channel_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793435570960,
+      "tag": "0007_messages",
+      "breakpoints": true
     }
   ]
 }
